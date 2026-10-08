@@ -9,6 +9,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Wigglet is now a full app with a Dock icon and a main window: Home (setup with live checks), Sessions (with Jump), Animations (browse and play every clip), Settings and About.
 - Setup no longer uses a pop-up alert. It warns when the app runs from a temporary location (App Translocation) where hooks would break, and waits until your first session appears.
 - New app icon: the pixel mascot on a transparent background.
+- The app's UI follows the website's design system: ink background, square corners, hairline rows, mono labels, one clay accent. The hover card, toast and chat bar use the same square panels.
+- Claude desktop app: sessions in its Code tab show their host, and Jump opens them with `claude://resume` (the link Claude Code's `/desktop` uses).
 
 ### Added
 - Hand-authored 12 fps frame data for every clip (`AnimationData.swift`), connector frames between clips, a profile turn, a crouched typing stance, and dithered pop-in and fade-out for session start and end.

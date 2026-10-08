@@ -74,6 +74,10 @@ if CommandLine.arguments.contains("--selftest") {
         print(problem)
         exit(1)
     }
+    // Claude desktop jump link: the format Claude Code's /desktop handoff uses.
+    var probe = SessionPet(sid: "abc-123", cwd: "/tmp/my proj", project: "p", startedAt: 0, transcript: "", lastTool: "", toolCount: 0, turnStart: nil, errorStreak: 0, lastErrorAt: nil, mood: "working", kind: .none, say: "", delta: "", ts: 0)
+    probe.hostBundleId = Jump.claudeDesktop
+    if Jump.desktopLink(probe)?.absoluteString != "claude://resume?session=abc-123&cwd=/tmp/my%20proj" { print("desktop link \(Jump.desktopLink(probe)?.absoluteString ?? "")"); exit(1) }
     // Connect / disconnect round trip against this throwaway HOME, including an old ClawdPet hook to replace.
     do {
         let dir = (settingsPath as NSString).deletingLastPathComponent
@@ -493,9 +497,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Main window: setup, sessions, animations, settings. Opens on its own until Wigglet is connected.
         appState.delegate = self
-        mainWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 880, height: 600),
+        mainWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 700),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         mainWindow.title = PRODUCT_NAME
+        mainWindow.titleVisibility = .hidden
+        mainWindow.titlebarAppearsTransparent = true
+        mainWindow.appearance = NSAppearance(named: .darkAqua)
+        mainWindow.backgroundColor = NSColor(srgbRed: 0x14 / 255.0, green: 0x14 / 255.0, blue: 0x13 / 255.0, alpha: 1)
         mainWindow.isReleasedWhenClosed = false
         mainWindow.contentView = NSHostingView(rootView: MainView(model: model, state: appState))
         mainWindow.center()

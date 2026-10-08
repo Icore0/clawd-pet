@@ -46,8 +46,23 @@ enum Jump {
             NSWorkspace.shared.open([URL(fileURLWithPath: s.cwd)], withApplicationAt: app, configuration: config)
             return Result(ok: true, note: "")
         }
+        if id == claudeDesktop, !s.sid.isEmpty, let url = desktopLink(s) {
+            // Claude Code's own `/desktop` handoff opens a session in the Claude app with this link.
+            NSWorkspace.shared.open(url)
+            return Result(ok: true, note: "")
+        }
         running?.activate()
         return Result(ok: false, note: "Brought \(name) forward; couldn't pick the session")
+    }
+
+    static let claudeDesktop = "com.anthropic.claudefordesktop"
+
+    /// `claude://resume?session=<id>&cwd=<path>`, the link Claude Code's `/desktop` command uses.
+    static func desktopLink(_ s: SessionPet) -> URL? {
+        var c = URLComponents()
+        c.scheme = "claude"; c.host = "resume"
+        c.queryItems = [URLQueryItem(name: "session", value: s.sid)] + (s.cwd.isEmpty ? [] : [URLQueryItem(name: "cwd", value: s.cwd)])
+        return c.url
     }
 
     /// AppleScript selects the window and tab whose tty matches. Runs in-process; macOS asks for Automation access once.

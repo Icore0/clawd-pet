@@ -214,15 +214,17 @@ struct ChatView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(chat.listening ? Color.red : Color.primary.opacity(0.75))
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(chat.listening ? Color.red.opacity(0.18) : Color.clear))
+                    .background(Rectangle().fill(chat.listening ? W.clay.opacity(0.22) : Color.clear))
             }.buttonStyle(.plain).help("Dictate (uses macOS Dictation or your dictation app)")
             Button { chat.send() } label: {
-                Image(systemName: "arrow.up.circle.fill").font(.system(size: 22))
-                    .foregroundStyle(chat.text.isEmpty || chat.isBusy ? Color.secondary.opacity(0.5) : wiggletOrange)
+                Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(W.bg).frame(width: 28, height: 28)
+                    .background(Rectangle().fill(chat.text.isEmpty || chat.isBusy ? W.ink4 : W.clay))
             }.buttonStyle(.plain).disabled(chat.text.isEmpty || chat.isBusy)
         }
         .padding(.horizontal, 16).frame(width: Self.width, height: 48)
-        .glass(Capsule())
+        .wPanel()
+        .environment(\.colorScheme, .dark)
     }
 
     var card: some View {
@@ -231,7 +233,7 @@ struct ChatView: View {
                 HStack(spacing: 5) {
                     ForEach(0..<3) { i in
                         TimelineView(.animation) { tl in
-                            Circle().fill(Color.primary.opacity(0.6)).frame(width: 6, height: 6)
+                            Rectangle().fill(W.ink2).frame(width: 6, height: 6)
                                 .offset(y: -3 * max(0, sin(tl.date.timeIntervalSinceReferenceDate * 6 - Double(i) * 0.8)))
                         }
                     }
@@ -251,7 +253,8 @@ struct ChatView: View {
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 10).frame(width: Self.width)
-        .glass(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .wPanel()
+        .environment(\.colorScheme, .dark)
     }
 
     var body: some View {

@@ -89,121 +89,175 @@ struct LiveMascot: View {
     }
 }
 
+/// Short host label for a session ("CLAUDE APP", "TERMINAL", ...).
+func hostLabel(_ s: SessionPet) -> String {
+    switch s.hostBundleId {
+    case "com.anthropic.claudefordesktop": return "Claude app"
+    case Jump.terminal: return "Terminal"
+    case Jump.iterm: return "iTerm2"
+    case "": return ""
+    default: return Jump.editors[s.hostBundleId] ?? Jump.hostName(s)
+    }
+}
+
 struct MainView: View {
     @ObservedObject var model: PetModel
     @ObservedObject var state: AppState
 
     var body: some View {
-        NavigationSplitView {
-            List(AppState.Pane.allCases, selection: Binding(get: { state.pane }, set: { if let p = $0 { state.pane = p } })) { pane in
-                Label(pane.rawValue, systemImage: pane.icon).tag(pane)
-            }
-            .navigationSplitViewColumnWidth(min: 170, ideal: 190)
-        } detail: {
-            Group {
-                switch state.pane {
-                case .home: HomePane(model: model, state: state)
-                case .sessions: SessionsPane(model: model, state: state)
-                case .animations: AnimationsPane(model: model, state: state)
-                case .settings: SettingsPane(model: model, state: state)
-                case .about: AboutPane(model: model)
+        HStack(spacing: 0) {
+            Sidebar(model: model, state: state)
+            Rectangle().fill(W.soft).frame(width: 1)
+            ScrollView {
+                Group {
+                    switch state.pane {
+                    case .home: HomePane(model: model, state: state)
+                    case .sessions: SessionsPane(model: model, state: state)
+                    case .animations: AnimationsPane(model: model, state: state)
+                    case .settings: SettingsPane(model: model, state: state)
+                    case .about: AboutPane(model: model)
+                    }
                 }
+                .padding(.horizontal, 44).padding(.top, 56).padding(.bottom, 40)
+                .frame(maxWidth: 860, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(minWidth: 760, minHeight: 520)
+        .background(W.bg)
+        .preferredColorScheme(.dark)
+        .frame(minWidth: 860, minHeight: 580)
     }
 }
 
-// MARK: Home: three checked steps, live
-
-struct StepRow<Content: View>: View {
-    let number: Int
-    let title: String
-    let done: Bool
-    var warn = false
-    @ViewBuilder var content: Content
+struct Sidebar: View {
+    @ObservedObject var model: PetModel
+    @ObservedObject var state: AppState
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            ZStack {
-                Circle().fill(done ? Color.green.opacity(0.18) : (warn ? Color.orange.opacity(0.18) : Color.secondary.opacity(0.12)))
-                if done { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(.green) }
-                else if warn { Image(systemName: "exclamationmark").font(.system(size: 13, weight: .bold)).foregroundStyle(.orange) }
-                else { Text("\(number)").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary) }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                MascotView(model: model, name: "breathe", t: 0, cell: 2).frame(width: 30, height: 22)
+                Text("wigglet").font(W.mono(14, .medium)).foregroundStyle(W.ink)
             }
-            .frame(width: 30, height: 30)
+            .padding(.top, 46).padding(.horizontal, 22).padding(.bottom, 26)
+            Hairline()
+            ForEach(Array(AppState.Pane.allCases.enumerated()), id: \.offset) { i, pane in
+                let on = state.pane == pane
+                Button { state.pane = pane } label: {
+                    HStack(spacing: 12) {
+                        Rectangle().fill(on ? W.clay : Color.clear).frame(width: 2, height: 18)
+                        Text(String(format: "%02d", i + 1)).font(W.mono(10.5)).foregroundStyle(on ? W.clay : W.ink4)
+                        Text(pane.rawValue.uppercased()).font(W.mono(12, .medium)).tracking(0.6).foregroundStyle(on ? W.ink : W.ink3)
+                        Spacer()
+                        Keycap(text: "⌘\(i + 1)", active: on)
+                        if pane == .sessions && !model.sessions.isEmpty {
+                            Text("\(model.sessions.count)").font(W.mono(10.5)).foregroundStyle(W.ink3)
+                        }
+                    }
+                    .padding(.trailing, 18).frame(height: 46)
+                    .background(on ? W.panel : Color.clear)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command)
+                Hairline()
+            }
+            Spacer()
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(size: 15, weight: .semibold))
-                content
+                HStack(spacing: 8) {
+                    Rectangle().fill(state.connected ? W.ok : W.clay).frame(width: 7, height: 7)
+                    MonoLabel(text: state.connected ? "Connected" : "Not connected", color: state.connected ? W.ink2 : W.clay, size: 10.5)
+                }
+                MonoLabel(text: "Unofficial fan project", color: W.ink4, size: 9.5)
             }
-            Spacer(minLength: 0)
+            .padding(22)
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.04)))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Step \(number): \(title)\(done ? ", done" : "")")
+        .frame(width: 232)
+        .background(W.bg)
     }
 }
+
+// MARK: Home
 
 struct HomePane: View {
     @ObservedObject var model: PetModel
     @ObservedObject var state: AppState
+    var allDone: Bool { state.locationOK && state.connected && !model.sessions.isEmpty }
+
+    func status(_ done: Bool, _ warn: Bool = false) -> some View {
+        Group {
+            if done { Chip(text: "Done", color: W.ok) }
+            else if warn { Chip(text: "Fix this", color: W.clay) }
+            else { Chip(text: "To do", color: W.ink3) }
+        }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 18) {
-                    LiveMascot(model: model, name: state.connected && !model.sessions.isEmpty ? "hello" : "breathe", cell: 7)
-                        .frame(width: 110, height: 90)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Wigglet").font(.system(size: 30, weight: .bold))
-                        Text("One Wigglet for every Claude Code session.").font(.system(size: 14)).foregroundStyle(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 14) {
+                    MonoLabel(text: "01 / Setup", color: W.clay)
+                    Heading(text: allDone ? "You're all set." : "Set up Wigglet.", size: 46)
+                    Text("Three steps. Each one checks itself.").font(W.sans(15)).foregroundStyle(W.ink3)
                 }
-                .padding(.bottom, 4)
+                Spacer()
+                LiveMascot(model: model, name: allDone ? "done" : (state.connected ? "breathe" : "ask"), cell: 7).frame(width: 120, height: 100)
+            }
+            .padding(.bottom, 34)
+            Hairline(strong: true)
 
-                StepRow(number: 1, title: "Keep Wigglet in Applications", done: state.locationOK, warn: !state.locationOK) {
-                    if state.locationOK {
-                        Text("Running from \(state.appPath)").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-                    } else {
-                        Text(state.translocated
-                             ? "macOS is running a temporary copy, so Claude Code couldn't find Wigglet later. Drag Wigglet into Applications, then open it from there."
-                             : "Wigglet isn't in Applications. Hooks point at this exact copy, so move it first, then open it from Applications.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        Button("Show Wigglet in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: state.appPath)]) }
+            WRow(number: "01", title: "Keep Wigglet in Applications",
+                 detail: state.locationOK ? "Running from \(state.appPath)"
+                    : (state.translocated
+                       ? "macOS is running a temporary copy that Claude Code can't reach later. Drag Wigglet into Applications and open it from there."
+                       : "Hooks point at this exact copy, so move Wigglet into Applications first, then open it from there.")) {
+                HStack(spacing: 10) {
+                    if !state.locationOK {
+                        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: state.appPath)]) }
+                            .buttonStyle(WButton(kind: .line, small: true))
                     }
-                }
-
-                StepRow(number: 2, title: "Connect to Claude Code", done: state.connected) {
-                    if state.connected {
-                        Text("Hooks are in ~/.claude/settings.json. Your original was backed up first.").font(.system(size: 12)).foregroundStyle(.secondary)
-                    } else {
-                        Text("Adds a few hook entries to ~/.claude/settings.json and saves a backup beside it. Nothing else changes.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        Button("Connect") { state.connect() }.buttonStyle(.borderedProminent).disabled(state.translocated)
-                    }
-                    if !state.connectError.isEmpty {
-                        Text(state.connectError).font(.system(size: 12)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                StepRow(number: 3, title: "Start a Claude Code session", done: !model.sessions.isEmpty) {
-                    if let s = model.sessions.first {
-                        Text("Found \(model.sessionTag(s)). Its Wigglet is on your desktop.").font(.system(size: 12)).foregroundStyle(.secondary)
-                        Button("Open Sessions") { state.pane = .sessions }
-                    } else if state.connected {
-                        HStack(spacing: 8) {
-                            ProgressView().controlSize(.small)
-                            Text("Waiting… run `claude` in any terminal, or start a new session in VS Code or the Claude app.")
-                                .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
-                    } else {
-                        Text("After connecting, start a new session. Sessions that are already running appear after their next tool call.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
+                    status(state.locationOK, !state.locationOK)
                 }
             }
-            .padding(28)
-            .frame(maxWidth: 640, alignment: .leading)
+            WRow(number: "02", title: "Connect to Claude Code",
+                 detail: state.connected ? "Hooks are in ~/.claude/settings.json. The original was backed up first."
+                    : "Adds a few hook entries to ~/.claude/settings.json and saves a backup beside it. Replaces hooks left by older builds.") {
+                HStack(spacing: 10) {
+                    if !state.connected {
+                        Button("Connect") { state.connect() }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.translocated)
+                    }
+                    status(state.connected)
+                }
+            }
+            if !state.connectError.isEmpty {
+                Text(state.connectError).font(W.sans(12)).foregroundStyle(W.clay).padding(.vertical, 8)
+            }
+            WRow(number: "03", title: "Start a Claude Code session",
+                 detail: model.sessions.first.map { "Found \(model.sessionTag($0)) in \(hostLabel($0)). Its Wigglet is on your desktop." }
+                    ?? (state.connected ? "Waiting for one. Start a session in the Claude app, a terminal, VS Code or Cursor."
+                                        : "After connecting, start a new session. Sessions already running appear after their next tool call.")) {
+                HStack(spacing: 10) {
+                    if !model.sessions.isEmpty {
+                        Button("Open sessions") { state.pane = .sessions }.buttonStyle(WButton(kind: .line, small: true))
+                    } else if state.connected {
+                        ProgressView().controlSize(.small).tint(W.clay)
+                    }
+                    status(!model.sessions.isEmpty)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                MonoLabel(text: "Works with")
+                HStack(spacing: 0) {
+                    ForEach(["Claude app", "Terminal", "iTerm2", "VS Code", "Cursor"], id: \.self) { h in
+                        Text(h).font(W.sans(13)).foregroundStyle(W.ink2)
+                            .padding(.horizontal, 14).frame(height: 34)
+                            .overlay(Rectangle().stroke(W.soft, lineWidth: 1))
+                    }
+                }
+                Text("Any Claude Code session that reads ~/.claude/settings.json, including the Code tab in the Claude desktop app.")
+                    .font(W.sans(12)).foregroundStyle(W.ink4)
+            }
+            .padding(.top, 34)
         }
     }
 }
@@ -215,44 +269,55 @@ struct SessionsPane: View {
     @ObservedObject var state: AppState
     func status(_ mood: String) -> (String, Color) {
         switch mood {
-        case "waiting": return ("needs you", .orange)
-        case "working": return ("working", .green)
-        case "done": return ("done", .blue)
-        case "stalled": return ("quiet", .gray)
-        default: return ("idle", .gray)
+        case "waiting": return ("needs you", W.clay)
+        case "working": return ("working", W.ok)
+        case "done": return ("done", W.ink2)
+        case "stalled": return ("quiet", W.ink4)
+        default: return ("idle", W.ink4)
         }
     }
     var body: some View {
-        if model.sessions.isEmpty {
-            VStack(spacing: 10) {
-                LiveMascot(model: model, name: "sleep", cell: 6).frame(width: 110, height: 90)
-                Text("No sessions yet").font(.system(size: 17, weight: .semibold))
-                Text(state.connected ? "Start Claude Code and its Wigglet appears here." : "Connect to Claude Code first.")
-                    .foregroundStyle(.secondary)
-                if !state.connected { Button("Set up") { state.pane = .home } }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            List {
+        VStack(alignment: .leading, spacing: 0) {
+            MonoLabel(text: "02 / Sessions", color: W.clay).padding(.bottom, 14)
+            Heading(text: model.sessions.isEmpty ? "No sessions yet." : "Every session, one Wigglet.", size: 46).padding(.bottom, 34)
+            Hairline(strong: true)
+            if model.sessions.isEmpty {
+                HStack(spacing: 22) {
+                    LiveMascot(model: model, name: "sleep", cell: 6).frame(width: 110, height: 90)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(state.connected ? "Start Claude Code anywhere and its Wigglet shows up here." : "Connect to Claude Code first.")
+                            .font(W.sans(15)).foregroundStyle(W.ink2)
+                        if !state.connected { Button("Set up") { state.pane = .home }.buttonStyle(WButton(kind: .solid, small: true)) }
+                    }
+                }
+                .padding(.vertical, 30)
+            } else {
                 ForEach(model.displaySessions) { s in
                     let st = status(s.mood)
-                    HStack(spacing: 14) {
-                        MascotView(model: model, name: s.mood == "waiting" ? "ask" : "breathe", t: 0, cell: 3).frame(width: 46, height: 34)
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 8) {
-                                Text(model.sessionTag(s)).font(.system(size: 14, weight: .semibold))
-                                Text(st.0).font(.system(size: 11, weight: .medium)).padding(.horizontal, 7).padding(.vertical, 2)
-                                    .background(Capsule().fill(st.1.opacity(0.16))).foregroundStyle(st.1)
+                    VStack(spacing: 0) {
+                        HStack(spacing: 18) {
+                            Rectangle().fill(s.mood == "waiting" ? W.clay : Color.clear).frame(width: 2, height: 44)
+                            MascotView(model: model, name: s.mood == "waiting" ? "ask" : (s.mood == "working" ? "edit" : "breathe"), t: 0.4, cell: 3)
+                                .frame(width: 48, height: 36)
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 10) {
+                                    Text(model.sessionTag(s)).font(W.sans(18)).foregroundStyle(W.ink)
+                                    Chip(text: st.0, color: st.1)
+                                }
+                                Text(s.say.isEmpty ? s.cwd : (s.delta.isEmpty ? s.say : "\(s.say)  \(s.delta)"))
+                                    .font(W.sans(13)).foregroundStyle(W.ink3).lineLimit(1).truncationMode(.middle)
                             }
-                            Text(s.say.isEmpty ? s.cwd : (s.delta.isEmpty ? s.say : "\(s.say) \(s.delta)"))
-                                .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                            Spacer(minLength: 10)
+                            VStack(alignment: .trailing, spacing: 5) {
+                                MonoLabel(text: hostLabel(s), color: W.ink2, size: 10.5)
+                                MonoLabel(text: s.toolCount == 1 ? "1 tool" : "\(s.toolCount) tools", color: W.ink4, size: 10)
+                            }
+                            Button("Jump ↗") { state.delegate?.jump(s) }.buttonStyle(WButton(kind: .line, small: true))
+                                .help(s.hostApp.isEmpty ? "Jump to this session" : "Jump to \(Jump.hostName(s))")
                         }
-                        Spacer()
-                        Text(s.toolCount == 1 ? "1 tool" : "\(s.toolCount) tools").font(.system(size: 11)).foregroundStyle(.secondary)
-                        Button("Jump") { state.delegate?.jump(s) }
-                            .help(s.hostApp.isEmpty ? "Jump to this session" : "Jump to \(Jump.hostName(s))")
+                        .padding(.vertical, 14)
+                        Hairline()
                     }
-                    .padding(.vertical, 4)
                 }
             }
         }
@@ -264,38 +329,44 @@ struct SessionsPane: View {
 struct AnimationsPane: View {
     @ObservedObject var model: PetModel
     @ObservedObject var state: AppState
+    var clips: [Animation] { AnimationCatalog.all.filter { $0.id != "glide" } }
     var body: some View {
-        HStack(spacing: 0) {
-            ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-                    ForEach(AnimationCatalog.all.filter { $0.id != "glide" }, id: \.id) { a in
-                        Button { state.preview = a.id } label: {
-                            VStack(spacing: 4) {
-                                MascotView(model: model, name: a.id, t: Double(AnimationData.clips[a.id]?.frameCount ?? 12) / 24, cell: 4)
-                                    .frame(height: 64)
-                                Text(a.id).font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.6)
-                            }
-                            .padding(8)
-                            .frame(maxWidth: .infinity)
-                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(state.preview == a.id ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04)))
-                        }
-                        .buttonStyle(.plain)
+        let a = AnimationCatalog.byId(state.preview)
+        VStack(alignment: .leading, spacing: 0) {
+            MonoLabel(text: "03 / Animations", color: W.clay).padding(.bottom, 14)
+            Heading(text: "\(clips.count) clips. Pick one.", size: 46).padding(.bottom, 30)
+            HStack(alignment: .center, spacing: 28) {
+                LiveMascot(model: model, name: a.id, cell: 10).frame(width: 260, height: 190)
+                    .background(W.raised).overlay(Rectangle().stroke(W.soft, lineWidth: 1))
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(a.id).font(W.sans(26)).tracking(-0.6).foregroundStyle(W.ink)
+                    Text(a.detected).font(W.sans(13)).foregroundStyle(W.ink3).fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        Chip(text: String(format: "%.1f s", a.duration))
+                        Chip(text: a.loop ? "loops" : "plays once")
+                        Chip(text: "priority \(a.priority)")
                     }
                 }
-                .padding(16)
             }
-            Divider()
-            let a = AnimationCatalog.byId(state.preview)
-            VStack(alignment: .leading, spacing: 10) {
-                LiveMascot(model: model, name: a.id, cell: 10).frame(width: 240, height: 200)
-                Text(a.id).font(.system(size: 18, weight: .semibold))
-                Text(a.detected).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Text(String(format: "%.1f s · %@", a.duration, a.loop ? "loops" : "plays once")).font(.system(size: 11)).foregroundStyle(.tertiary)
-                Spacer()
+            .padding(.bottom, 28)
+            let cols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 5)
+            LazyVGrid(columns: cols, spacing: 0) {
+                ForEach(clips, id: \.id) { c in
+                    let on = state.preview == c.id
+                    Button { state.preview = c.id } label: {
+                        VStack(spacing: 6) {
+                            MascotView(model: model, name: c.id, t: Double(AnimationData.clips[c.id]?.frameCount ?? 12) / 24, cell: 4).frame(height: 58)
+                            Text(c.id).font(W.mono(10.5)).foregroundStyle(on ? W.clay : W.ink3).lineLimit(1).minimumScaleFactor(0.6)
+                        }
+                        .padding(.vertical, 12).padding(.horizontal, 6)
+                        .frame(maxWidth: .infinity)
+                        .background(on ? W.panel : Color.clear)
+                        .overlay(Rectangle().stroke(on ? W.clay : W.soft, lineWidth: 1))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .padding(18)
-            .frame(width: 280)
         }
     }
 }
@@ -305,52 +376,74 @@ struct AnimationsPane: View {
 struct SettingsPane: View {
     @ObservedObject var model: PetModel
     @ObservedObject var state: AppState
+    func group(_ title: String) -> some View {
+        MonoLabel(text: title).padding(.top, 30).padding(.bottom, 4)
+    }
     var body: some View {
-        Form {
-            Section("Claude Code") {
-                HStack {
-                    Label(state.connected ? "Connected" : "Not connected", systemImage: state.connected ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(state.connected ? .green : .secondary)
-                    Spacer()
-                    if state.connected { Button("Disconnect") { state.disconnect() } }
-                    else { Button("Connect") { state.connect() }.disabled(state.translocated) }
-                }
-                if !state.connectError.isEmpty { Text(state.connectError).foregroundStyle(.red).font(.system(size: 12)) }
-                Button("Show settings.json in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: settingsPath)])
+        VStack(alignment: .leading, spacing: 0) {
+            MonoLabel(text: "04 / Settings", color: W.clay).padding(.bottom, 14)
+            Heading(text: "Settings.", size: 46).padding(.bottom, 10)
+
+            group("Claude Code")
+            Hairline(strong: true)
+            WRow(title: state.connected ? "Connected" : "Not connected",
+                 detail: state.connected ? "Hooks live in ~/.claude/settings.json." : "Wigglet can't see your sessions until it's connected.") {
+                HStack(spacing: 10) {
+                    Button("Show file") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: settingsPath)]) }
+                        .buttonStyle(WButton(kind: .line, small: true))
+                    if state.connected { Button("Disconnect") { state.disconnect() }.buttonStyle(WButton(kind: .line, small: true)) }
+                    else { Button("Connect") { state.connect() }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.translocated) }
                 }
             }
-            Section("Wigglets") {
-                Picker("Size", selection: Binding(get: { Int(model.scale) }, set: { state.delegate?.applyScale(Double($0)) })) {
-                    Text("Small").tag(7); Text("Medium").tag(10); Text("Large").tag(14)
-                }
-                Toggle("Play sounds when a session needs you or finishes", isOn: Binding(get: { state.delegate?.soundsOn ?? false }, set: { state.delegate?.soundsOn = $0; state.objectWillChange.send() }))
-                Toggle("Show latest message in hover card", isOn: Binding(get: { model.showLatest }, set: { model.showLatest = $0; state.objectWillChange.send(); state.delegate?.rebuildMenu() }))
-                Button("Reset position") { state.delegate?.resetPosition() }
+            if !state.connectError.isEmpty { Text(state.connectError).font(W.sans(12)).foregroundStyle(W.clay).padding(.vertical, 6) }
+
+            group("Wigglets")
+            Hairline(strong: true)
+            WRow(title: "Size", detail: "How big each Wigglet is on your desktop.") {
+                Segmented(options: [(7, "Small"), (10, "Medium"), (14, "Large")],
+                          selection: Binding(get: { Int(model.scale) }, set: { state.delegate?.applyScale(Double($0)) }))
             }
-            Section("Startup") {
-                Toggle("Open Wigglet at login", isOn: Binding(get: { SMAppService.mainApp.status == .enabled }, set: { _ in state.delegate?.toggleLogin(); state.objectWillChange.send() }))
+            WRow(title: "Sounds", detail: "A ping when a session needs you, a chime when one finishes.") {
+                SquareToggle(isOn: Binding(get: { state.delegate?.soundsOn ?? false }, set: { state.delegate?.soundsOn = $0; state.objectWillChange.send() }), label: "Sounds")
             }
-            Section("Chat") {
-                HStack {
-                    SecureField(state.keySaved ? "OpenRouter key saved in Keychain" : "OpenRouter API key", text: Binding(get: { state.keyDraft }, set: { state.keyDraft = $0 }))
+            WRow(title: "Latest message in hover card", detail: "Read from the local transcript, shown only, never stored or sent.") {
+                SquareToggle(isOn: Binding(get: { model.showLatest }, set: { model.showLatest = $0; state.objectWillChange.send(); state.delegate?.rebuildMenu() }), label: "Latest message")
+            }
+            WRow(title: "Position", detail: "Put the team back in the bottom-right corner.") {
+                Button("Reset") { state.delegate?.resetPosition() }.buttonStyle(WButton(kind: .line, small: true))
+            }
+
+            group("Startup")
+            Hairline(strong: true)
+            WRow(title: "Open at login", detail: "Wigglet starts with your Mac.") {
+                SquareToggle(isOn: Binding(get: { SMAppService.mainApp.status == .enabled }, set: { _ in state.delegate?.toggleLogin(); state.objectWillChange.send() }), label: "Open at login")
+            }
+
+            group("Chat")
+            Hairline(strong: true)
+            WRow(title: "OpenRouter key", detail: state.keySaved ? "Saved in the macOS Keychain." : "Paste a key to chat without using your Claude plan.") {
+                HStack(spacing: 8) {
+                    SecureField("sk-or-…", text: Binding(get: { state.keyDraft }, set: { state.keyDraft = $0 }))
+                        .textFieldStyle(.plain).font(W.mono(12)).foregroundStyle(W.ink)
+                        .padding(.horizontal, 10).frame(width: 200, height: 28)
+                        .background(W.raised).overlay(Rectangle().stroke(W.line, lineWidth: 1))
                     Button("Save") {
                         let typed = state.keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !typed.isEmpty && KeychainStore.save(typed) { state.keyDraft = ""; state.keySaved = true }
-                    }.disabled(state.keyDraft.isEmpty)
-                    if state.keySaved { Button("Remove") { KeychainStore.delete(); state.keySaved = false } }
+                    }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.keyDraft.isEmpty)
+                    if state.keySaved { Button("Remove") { KeychainStore.delete(); state.keySaved = false }.buttonStyle(WButton(kind: .line, small: true)) }
                 }
-                Picker("Model", selection: Binding(get: { state.delegate?.chat.model ?? orModels[0].id }, set: { state.delegate?.chat.model = $0; state.objectWillChange.send() })) {
-                    ForEach(orModels, id: \.id) { Text($0.label).tag($0.id) }
-                }
-                Toggle("Use Claude Code CLI instead (counts toward your Claude plan)", isOn: Binding(get: { state.delegate?.chat.useCLI ?? false }, set: { v in
+            }
+            WRow(title: "Model", detail: "Used for chat over OpenRouter.") {
+                Segmented(options: orModels.map { ($0.id, $0.label.replacingOccurrences(of: "Claude ", with: "")) },
+                          selection: Binding(get: { state.delegate?.chat.model ?? orModels[0].id }, set: { state.delegate?.chat.model = $0; state.objectWillChange.send() }))
+            }
+            WRow(title: "Use Claude Code CLI instead", detail: "Runs claude -p locally. This counts toward your Claude plan.") {
+                SquareToggle(isOn: Binding(get: { state.delegate?.chat.useCLI ?? false }, set: { v in
                     state.delegate?.chat.useCLI = v; UserDefaults.standard.set(v, forKey: "useClaudeCLI"); state.objectWillChange.send()
-                }))
-                Text("The key stays in the macOS Keychain. Chat sends your messages and a short session summary, never file contents.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                }), label: "Use Claude Code CLI")
             }
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -359,18 +452,28 @@ struct SettingsPane: View {
 struct AboutPane: View {
     let model: PetModel
     var body: some View {
-        VStack(spacing: 12) {
-            LiveMascot(model: model, name: "hello", cell: 9).frame(width: 140, height: 110)
-            Text("Wigglet").font(.system(size: 26, weight: .bold))
-            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
-                .foregroundStyle(.secondary)
-            Link("github.com/Icore0/wigglet", destination: URL(string: "https://github.com/Icore0/wigglet")!)
-            Text("Unofficial fan project, not affiliated with Anthropic. The mascot belongs to Anthropic.")
-                .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Text("Source available. All rights reserved until a license is announced.")
-                .font(.system(size: 11)).foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 0) {
+            MonoLabel(text: "05 / About", color: W.clay).padding(.bottom, 14)
+            HStack(alignment: .center, spacing: 30) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Heading(text: "Wigglet", size: 64)
+                    Text("One Wigglet for every Claude Code session.").font(W.sans(16)).foregroundStyle(W.ink3)
+                }
+                Spacer()
+                LiveMascot(model: model, name: "hello", cell: 10).frame(width: 160, height: 130)
+            }
+            .padding(.bottom, 34)
+            Hairline(strong: true)
+            WRow(title: "Version", detail: "") {
+                MonoLabel(text: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0", color: W.ink2)
+            }
+            WRow(title: "Source", detail: "github.com/Icore0/wigglet") {
+                Button("Open ↗") { NSWorkspace.shared.open(URL(string: "https://github.com/Icore0/wigglet")!) }
+                    .buttonStyle(WButton(kind: .line, small: true))
+            }
+            WRow(title: "License", detail: "Source available. All rights reserved until a license is announced.") { EmptyView() }
+            Text("Unofficial fan project, not affiliated with Anthropic. The pixel mascot design belongs to Anthropic.")
+                .font(W.sans(12)).foregroundStyle(W.ink4).padding(.top, 24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(30)
     }
 }

@@ -77,7 +77,7 @@ The hover card reads the newest assistant message from the session's transcript:
 | Terminal | Selects the tab whose `tty` matches (AppleScript) | Yes: picked the right one of two tabs |
 | iTerm2 | Selects the session whose `tty` matches (AppleScript) | Not tested |
 | VS Code, Cursor, Windsurf | Opens the session's folder with that editor, which focuses its window | Not tested |
-| Claude desktop app | Brings the app forward and says it couldn't pick the session (no documented deep link) | Yes |
+| Claude desktop app (Code tab) | Opens the session with `claude://resume?session=<id>&cwd=<path>`, the link Claude Code's own `/desktop` handoff uses | Not tested live (it would disturb a running session); link format covered by `--selftest` |
 | Any other app | Brings the app forward with the same note | |
 | App no longer running | Opens the session's folder in Finder | Yes |
 

@@ -58,31 +58,29 @@ struct ActivityView: View {
                     Text("Nothing yet. Ask Claude Code something and watch me work.").font(.system(size: 12)).foregroundStyle(.secondary)
                 }
             }
-            .padding(14).frame(width: 320)
+            .padding(16).frame(width: 330)
+            .environment(\.colorScheme, .dark)
         if ActivityView.offscreen {
-            content.background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color(white: 0.16)))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 1))
+            content.wPanel()
         } else {
-            content.glass(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            content.wPanel()
         }
     }
 
     @ViewBuilder func card(_ s: SessionPet) -> some View {
         let waiting = s.mood == "waiting", working = s.mood == "working"
         HStack(spacing: 8) {
-            Circle().fill(waiting ? Color.orange : working ? Color.green : Color.gray).frame(width: 8, height: 8)
+            Rectangle().fill(waiting ? W.clay : working ? W.ok : W.ink4).frame(width: 8, height: 8)
                 .accessibilityHidden(true)
-            Text(model.sessionTag(s)).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.middle)
+            Text(model.sessionTag(s)).font(W.sans(14, .medium)).foregroundStyle(W.ink).lineLimit(1).truncationMode(.middle)
                 .help(s.cwd)
-            Text(status(s.mood)).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+            MonoLabel(text: status(s.mood), color: waiting ? W.clay : W.ink3, size: 10)
             Spacer()
             if ActivityView.offscreen {
-                Label("Jump", systemImage: "arrow.up.forward.app").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.accentColor)
+                Text("JUMP ↗").font(W.mono(10.5, .semibold)).foregroundStyle(W.ink).padding(.horizontal, 9).frame(height: 24).overlay(Rectangle().stroke(W.line, lineWidth: 1))
             } else {
-                Button { onJump(s) } label: {
-                    Label("Jump", systemImage: "arrow.up.forward.app").font(.system(size: 11, weight: .semibold))
-                }
-                .buttonStyle(.borderless)
+                Button("Jump ↗") { onJump(s) }
+                .buttonStyle(WButton(kind: .line, small: true))
                 .keyboardShortcut(.defaultAction)
                 .help("Jump to this session (Return or ⌘J)")
                 .accessibilityLabel("Jump to \(model.sessionTag(s)) session")
@@ -106,7 +104,7 @@ struct ActivityView: View {
         } else {
             ForEach(Array(s.events.suffix(6).reversed())) { e in
                 HStack(spacing: 8) {
-                    Image(systemName: kindIcon[e.kind] ?? "circle.fill").font(.system(size: 11)).frame(width: 16).foregroundStyle(wiggletOrange)
+                    Image(systemName: kindIcon[e.kind] ?? "circle.fill").font(.system(size: 11)).frame(width: 16).foregroundStyle(W.clay)
                         .accessibilityHidden(true)
                     Text(e.text.isEmpty ? e.kind.rawValue : e.text).font(.system(size: 12)).lineLimit(1)
                     Spacer(minLength: 6)
@@ -118,7 +116,7 @@ struct ActivityView: View {
 
     @ViewBuilder func latest(_ l: TranscriptReader.Latest) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("Latest message").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary).textCase(.uppercase)
+            MonoLabel(text: "Latest message", color: W.clay, size: 10)
             if !l.prompt.isEmpty {
                 Text("› " + l.prompt).font(.system(size: 11)).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.tail)
             }
@@ -138,7 +136,8 @@ struct ActivityView: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.06)))
+        .background(Rectangle().fill(W.raised))
+        .overlay(Rectangle().stroke(W.soft, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Latest message: \(l.message)")
     }
@@ -151,7 +150,8 @@ struct ToastView: View {
         Text(model.toast)
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .glass(Capsule())
+            .foregroundStyle(W.ink)
+            .wPanel()
             .padding(6).fixedSize()
             .accessibilityLabel(model.toast)
     }

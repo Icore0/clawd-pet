@@ -129,6 +129,9 @@ If you've already deleted the app, remove the hooks first with `Wigglet.app/Cont
 **Does it use my Claude usage?**
 The animations never do, because they come from local hook files. Chat with an OpenRouter key doesn't either. Without a key, or with **Use Claude Code CLI instead** checked in AI settings, chat runs `claude -p`, and that does count toward your plan.
 
+**Does it work with the Claude desktop app?**
+Yes. Sessions in the desktop app's Code tab run the same hooks as the terminal, so they get a Wigglet too. Plain chats in the Claude app aren't Claude Code sessions, so they don't.
+
 **Does it work with several sessions?**
 Yes, that's what it's for. Each session gets its own Wigglet, name tag and scarf colour.
 
@@ -136,7 +139,7 @@ Yes, that's what it's for. Each session gets its own Wigglet, name tag and scarf
 Connect adds hook entries that call the app with `--hook`, after saving a backup to `~/.claude/settings.json.wigglet-backup`. If your `settings.json` isn't valid JSON, it leaves the file alone. The hook only writes metadata, and the source is here if you want to check.
 
 **Can it jump to the right window?**
-Terminal: the exact tab (macOS asks once for permission). iTerm2 uses the same approach, and VS Code and Cursor open the session's folder in that editor, but those three are untested so far. Anything else, including the Claude desktop app: the app comes forward and a note says it couldn't pick the session.
+Terminal: the exact tab (macOS asks once for permission). iTerm2 uses the same approach, and VS Code and Cursor open the session's folder in that editor, but those three are untested so far. Claude desktop app: Jump opens that session with the same `claude://resume` link Claude Code's `/desktop` command uses (not tested live yet). Anything else: the app comes forward and a note says it couldn't pick the session.
 
 **How do I disconnect?**
 Click **Disconnect** in Settings, or use the menu-bar icon. Hooks you added yourself stay.
