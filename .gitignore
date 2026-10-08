@@ -1,0 +1,16 @@
+.DS_Store
+build/
+*.app
+*.zip
+*.dmg
+# internal working files (Droppy/Claude briefs, checkpoints, rejected designs)
+NEXT_PROMPT*.md
+DROPPY_PROMPT.md
+BRIEF*.md
+CHECKPOINT.md
+mascot/alt-pipkin/
+# never commit secrets
+.env
+*.key
+mascot/CLAWD-SPEC.md
+tools/extract_official_frames.swift

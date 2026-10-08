@@ -1,0 +1,29 @@
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"echo vercel"},"expect":""}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit-tree"},"expect":""}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npm run develop"},"expect":""}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"echo eslint"},"expect":""}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"vercel --prod"},"expect":"deploy"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"netlify deploy"},"expect":"deploy"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"fly deploy"},"expect":"deploy"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npm publish"},"expect":"deploy"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"docker push"},"expect":"deploy"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m hi"},"expect":"commit"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git push"},"expect":"push"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git pull"},"expect":"pull"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git fetch"},"expect":"pull"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"eslint ."},"expect":"lint"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npx eslint ."},"expect":"lint"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"prettier ."},"expect":"lint"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ruff check"},"expect":"lint"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"prisma migrate"},"expect":"migrate"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"alembic upgrade head"},"expect":"migrate"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"psql db"},"expect":"migrate"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"docker build ."},"expect":"docker"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"docker compose up"},"expect":"docker"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"compose up"},"expect":"docker"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npm run dev"},"expect":"serve"}
+{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"uvicorn app:app"},"expect":"serve"}
+{"hook_event_name":"PreToolUse","tool_name":"WebSearch","tool_input":{},"expect":"webSearch"}
+{"hook_event_name":"PreToolUse","tool_name":"WebFetch","tool_input":{},"expect":"webFetch"}
+{"hook_event_name":"PreToolUse","tool_name":"NotebookEdit","tool_input":{},"expect":"notebook"}
+{"hook_event_name":"PreToolUse","tool_name":"mcp__demo","tool_input":{},"expect":"mcp"}
