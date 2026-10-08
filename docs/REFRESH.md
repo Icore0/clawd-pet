@@ -5,8 +5,8 @@ Every image and generated doc comes from the app's own code, so a refresh is fiv
 ```sh
 python3 docs/assets/build/render.py                                     # 1. images + docs/ANIMATIONS.md from app/Sources
 cd app && ./build.sh && cd ..                                           # 2. build the app
-HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # 3. checks (run from the repo root)
-HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # 3. checks (run from the repo root)
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
 git add -A docs README.md CHANGELOG.md && git commit -m "Refresh docs and assets"   # 5. review the diff first
 ```
 

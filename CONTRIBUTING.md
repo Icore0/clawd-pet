@@ -6,11 +6,11 @@ Thanks for helping. Small, focused pull requests are easiest to review.
 
 ```sh
 cd app && ./build.sh                                                    # universal ClawdPet.app
-cd .. && HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # run from the repo root
-HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit           # every clip on the cell grid
+cd .. && HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # run from the repo root
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit           # every clip on the cell grid
 ```
 
-Always use a throwaway `HOME` for test flags, so nothing touches your real `~/.claude`.
+Always use a throwaway `HOME` under `/tmp/` for test flags, so nothing touches your real `~/.claude`. `--selftest` refuses to run with any other `HOME`.
 
 Useful flags: `--gallery` plays every clip, `--demo-team N` writes N fake sessions, and `--dump-catalog` prints the animation table.
 

@@ -19,12 +19,12 @@ jobs:
 
       - name: Selftest
         run: |
-          export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
           app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest
 
       - name: Pixel audit
         run: |
-          export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
           app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
 
       - name: Zip

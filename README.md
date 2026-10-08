@@ -92,8 +92,8 @@ cd app && ./build.sh          # universal ClawdPet.app (arm64 + x86_64)
 Checks, run from the repo root with a throwaway `HOME`:
 
 ```sh
-HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest
-HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
 ```
 </details>
 
