@@ -6,19 +6,19 @@ Status `needs-verify` means the trigger is implemented but no recorded hook payl
 
 | id | trigger | how detected | priority | duration | loop | props | sound | status | tracks |
 |---|---|---|---|---|---|---|---|---|---|
-| read | read | mood working, kind read | 30 | 2.33 | yes | book |  | done | anticipation 0.2, action 1.83, settle 0.3 |
-| edit | edit | mood working, kind edit | 30 | 2.42 | yes | laptop |  | done | anticipation 0.2, action 1.92, settle 0.3 |
-| bash | bash | mood working, kind bash | 30 | 2.33 | yes | laptop |  | done | anticipation 0.2, action 1.83, settle 0.3 |
-| search | search | mood working, kind search | 30 | 2.17 | yes | glass |  | done | anticipation 0.2, action 1.67, settle 0.3 |
+| read | read | mood working, kind read | 30 | 2.5 | yes | book |  | done | anticipation 0.2, action 2.0, settle 0.3 |
+| edit | edit | mood working, kind edit | 30 | 2.5 | yes | laptop |  | done | anticipation 0.2, action 2.0, settle 0.3 |
+| bash | bash | mood working, kind bash | 30 | 2.42 | yes | laptop |  | done | anticipation 0.2, action 1.92, settle 0.3 |
+| search | search | mood working, kind search | 30 | 2.5 | yes | glass |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | web | web | mood working, kind web | 30 | 1.83 | yes | page |  | done | anticipation 0.2, action 1.33, settle 0.3 |
-| agent | agent | mood working, kind agent | 30 | 2.33 | yes |  |  | done | anticipation 0.2, action 1.83, settle 0.3 |
+| agent | agent | mood working, kind agent | 30 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | plan | plan | mood working, kind plan | 30 | 2.0 | yes |  |  | done | anticipation 0.2, action 1.5, settle 0.3 |
 | compact | compact | mood working, kind compact | 30 | 1.58 | yes |  |  | done | anticipation 0.2, action 1.08, settle 0.3 |
-| test | test | mood working, kind test | 30 | 2.0 | yes |  |  | done | anticipation 0.2, action 1.5, settle 0.3 |
-| build | build | mood working, kind build | 30 | 1.98 | yes |  |  | done | anticipation 0.4, action 1.08, settle 0.5 |
-| git | git | mood working, kind git | 30 | 2.33 | yes |  |  | done | anticipation 0.2, action 1.83, settle 0.3 |
-| install | install | mood working, kind install | 30 | 2.92 | yes |  |  | done | anticipation 0.2, action 2.42, settle 0.3 |
-| ask | waiting | mood waiting, kind is not yourTurn | 60 | 2.75 | yes |  |  | done | anticipation 0.2, action 2.25, settle 0.3 |
+| test | test | mood working, kind test | 30 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
+| build | build | mood working, kind build | 30 | 1.9 | yes |  |  | done | anticipation 0.4, action 1.0, settle 0.5 |
+| git | git | mood working, kind git | 30 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
+| install | install | mood working, kind install | 30 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
+| ask | waiting | mood waiting, kind is not yourTurn | 60 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | yourTurn | waiting | mood waiting, kind yourTurn | 60 | 2.67 | yes |  |  | done | anticipation 0.2, action 2.17, settle 0.3 |
 | done | done | mood done | 40 | 2.42 | no |  |  | done | anticipation 0.2, action 1.92, settle 0.3 |
 | oops | oops | mood oops | 50 | 2.0 | yes |  |  | done | anticipation 0.2, action 1.5, settle 0.3 |
@@ -35,7 +35,7 @@ Status `needs-verify` means the trigger is implemented but no recorded hook payl
 | mote | ambient | weighted idle pool | 10 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | juggle | ambient | weighted idle pool | 10 | 1.0 | yes |  |  | done | anticipation 0.2, action 0.5, settle 0.3 |
 | dream | ambient | weighted idle pool | 10 | 2.17 | yes |  |  | done | anticipation 0.2, action 1.67, settle 0.3 |
-| sleep | sleep | sleeping flag, or idle 120s | 20 | 3.17 | yes |  |  | done | anticipation 0.2, action 2.67, settle 0.3 |
+| sleep | sleep | sleeping flag, or idle 120s | 20 | 2.5 | yes |  |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | drag | drag | isDragging | 40 | 1.0 | yes |  |  | done | anticipation 0.2, action 0.5, settle 0.3 |
 | glide | glide | isGliding | 40 | 1.6 | yes |  |  | done | anticipation 0.2, action 1.1, settle 0.3 |
 | pet | pet | petUntil still ahead | 40 | 1.67 | yes |  |  | done | anticipation 0.2, action 1.17, settle 0.3 |
@@ -46,7 +46,7 @@ Status `needs-verify` means the trigger is implemented but no recorded hook payl
 | testFail | testFail | a test command failed, first 2.5s | 50 | 2.5 | no | x |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | handoff | handoff | a sub-agent started, first 2.5s | 40 | 1.92 | no | parcel |  | done | anticipation 0.2, action 1.42, settle 0.3 |
 | grind | grind | working turn longer than 20 min, 3s every 5 min | 40 | 3.58 | no |  |  | done | anticipation 0.2, action 3.08, settle 0.3 |
-| deploy | deploy | command vercel, netlify, fly deploy, npm publish, or docker push | 30 | 2.83 | yes | mark |  | done | anticipation 0.45, action 1.83, settle 0.55 |
+| deploy | deploy | command vercel, netlify, fly deploy, npm publish, or docker push | 30 | 3.0 | yes | mark |  | done | anticipation 0.45, action 2.0, settle 0.55 |
 | commit | commit | command git commit | 30 | 2.08 | yes | seal |  | done | anticipation 0.2, action 1.58, settle 0.3 |
 | push | push | command git push | 30 | 2.42 | yes | plane |  | done | anticipation 0.2, action 1.92, settle 0.3 |
 | pull | pull | command git pull or git fetch | 30 | 2.5 | yes | parcel |  | done | anticipation 0.2, action 2.0, settle 0.3 |
@@ -61,20 +61,20 @@ Status `needs-verify` means the trigger is implemented but no recorded hook payl
 | webFetch | webFetch | WebFetch | 30 | 2.08 | yes | page |  | done | anticipation 0.2, action 1.58, settle 0.3 |
 | bandage | bandage | errorStreak 3 or more | 50 | 2.42 | yes | mark |  | done | anticipation 0.2, action 1.92, settle 0.3 |
 | sweat | sweat | tool running longer than 60s | 40 | 1.92 | yes | drop |  | done | anticipation 0.2, action 1.42, settle 0.3 |
-| tea | tea | tool running longer than 180s | 40 | 2.83 | yes | cup |  | done | anticipation 0.2, action 2.33, settle 0.3 |
+| tea | tea | tool running longer than 180s | 40 | 2.5 | yes | cup |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | book | book | tool running longer than 600s | 40 | 2.58 | yes | rectangle |  | done | anticipation 0.2, action 2.08, settle 0.3 |
 | frantic | frantic | 15 tool starts inside 10s | 40 | 0.30 | yes | lines |  | done | anticipation 0.05, action 0.17, settle 0.08 |
 | watch | watch | waiting longer than 120s | 60 | 2.33 | yes | circle |  | done | anticipation 0.2, action 1.83, settle 0.3 |
 | flag | flag | waiting longer than 600s | 60 | 1.17 | yes | flag |  | done | anticipation 0.2, action 0.67, settle 0.3 |
-| coffee | coffee | earliest session today, first 30s | 20 | 2.83 | yes | cup |  | done | anticipation 0.2, action 2.33, settle 0.3 |
+| coffee | coffee | earliest session today, first 30s | 20 | 2.5 | yes | cup |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | confetti | confetti | tool 100 or first commit today, 2s | 40 | 2.25 | no | dots |  | done | anticipation 0.2, action 1.75, settle 0.3 |
-| nightcap | nightcap | idle, local hour 1 through 4 | 20 | 3.17 | yes | moon |  | done | anticipation 0.2, action 2.67, settle 0.3 |
+| nightcap | nightcap | idle, local hour 1 through 4 | 20 | 2.5 | yes | moon |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | conflict | conflict | failure text has CONFLICT or Automatic merge failed | 50 | 2.08 | no | mark |  | done | anticipation 0.2, action 1.58, settle 0.3 |
 | conflictStare | team | two edits of the same file within 60s | 40 | 2.27 | yes |  |  | done | anticipation 0.25, action 1.67, settle 0.35 |
 | highFive | team | two done moods within 3s | 40 | 2.07 | no |  |  | done | anticipation 0.15, action 1.67, settle 0.25 |
 | wave | team | a session sid newly appeared | 40 | 2.34 | no |  |  | done | anticipation 0.12, action 2.0, settle 0.22 |
 | parcel | team | done while another session works, then sleep | 40 | 2.25 | no | parcel |  | done | anticipation 0.35, action 1.5, settle 0.4 |
-| nap | team | every session idle for 120s | 20 | 3.77 | yes |  |  | done | anticipation 0.5, action 2.67, settle 0.6 |
+| nap | team | every session idle for 120s | 20 | 3.1 | yes |  |  | done | anticipation 0.5, action 2.0, settle 0.6 |
 | bump | team | grabbed slot overlaps a sibling | 40 | 0.62 | no |  |  | done | anticipation 0.08, action 0.42, settle 0.12 |
 | hop | team | every session mood is done | 40 | 1.36 | yes |  |  | done | anticipation 0.1, action 1.08, settle 0.18 |
 | poke | poke | single click without a drag | 40 | 0.74 | no |  |  | done | anticipation 0.06, action 0.58, settle 0.1 |

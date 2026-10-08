@@ -1,10 +1,8 @@
-{"scale": 7, "px": 2, "frames": 8, "bubbles": false, "sessions": [
-  {"project": "api", "mood": "working", "kind": "edit", "say": "routes.ts", "delta": "+12 -3"},
-  {"project": "web", "mood": "waiting", "kind": "ask", "say": "Allow Bash?"},
-  {"project": "docs", "mood": "working", "kind": "read", "say": "guide.md"},
-  {"project": "infra", "mood": "working", "kind": "build", "say": "Build image"},
-  {"project": "mobile", "mood": "working", "kind": "search", "say": "useAuth"},
-  {"project": "ml", "mood": "working", "kind": "install", "say": "pip install"},
-  {"project": "cli", "mood": "working", "kind": "git", "say": "git status"},
-  {"project": "design", "mood": "done", "kind": "none", "say": ""}
+{"frames": 48, "items": [
+  {"id": "ask", "accent": "#FFD25A"},
+  {"id": "edit", "accent": "#5AA9FF"},
+  {"id": "read", "accent": "#C28BFF"},
+  {"id": "build", "accent": "#7CF0C8"},
+  {"id": "search", "accent": "#FF7AA8"},
+  {"id": "install", "accent": "#FFFFFF"}
 ]}

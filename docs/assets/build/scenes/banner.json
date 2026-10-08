@@ -1,0 +1,17 @@
+{
+ "frames": 48,
+ "items": [
+  {
+   "id": "ask",
+   "accent": "#FFD25A"
+  },
+  {
+   "id": "build",
+   "accent": "#5AA9FF"
+  },
+  {
+   "id": "deploy",
+   "accent": "#C28BFF"
+  }
+ ]
+}

@@ -1,0 +1,41 @@
+{
+ "frames": 48,
+ "items": [
+  {
+   "id": "read"
+  },
+  {
+   "id": "edit"
+  },
+  {
+   "id": "search"
+  },
+  {
+   "id": "web"
+  },
+  {
+   "id": "test"
+  },
+  {
+   "id": "build"
+  },
+  {
+   "id": "git"
+  },
+  {
+   "id": "install"
+  },
+  {
+   "id": "testPass"
+  },
+  {
+   "id": "deploy"
+  },
+  {
+   "id": "tea"
+  },
+  {
+   "id": "sleep"
+  }
+ ]
+}

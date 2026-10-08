@@ -68,14 +68,14 @@ enum AnimationData {
         if glanceUp {
             keys.append(K(4, base.with { $0.armLX = 1; $0.armRX = 1; $0.armLY = 1; $0.armRY = 1; $0.lookY = 0 }))
             keys.append(K(1, base.with { $0.armLX = 1; $0.armRX = 1; $0.armLY = 1; $0.armRY = 1; $0.eyes = .dash }))
-            keys.append(K(2, base.with { $0.armLX = 1; $0.armRX = 1; $0.armLY = 1; $0.armRY = 1; $0.lookY = 1 }))
+            keys.append(K(3, base.with { $0.armLX = 1; $0.armRX = 1; $0.armLY = 1; $0.armRY = 1; $0.lookY = 1 }))
         }
         return keys
     }
 
     private static func sleeping(_ extra: (inout Pose) -> Void = { _ in }) -> [Key] {
-        [K(16, P { $0.eyes = .dash; $0.armLY = 1; $0.armRY = 1; extra(&$0) }),
-         K(16, P { $0.eyes = .dash; $0.armLY = 1; $0.armRY = 1; $0.squash = 1; extra(&$0) })]
+        [K(12, P { $0.eyes = .dash; $0.armLY = 1; $0.armRY = 1; extra(&$0) }),
+         K(12, P { $0.eyes = .dash; $0.armLY = 1; $0.armRY = 1; $0.squash = 1; extra(&$0) })]
     }
 
     private static func slump(_ look: Int) -> [Key] {
@@ -135,7 +135,7 @@ enum AnimationData {
         c["read"] = ClipData(keys: [
             K(6, hold2.with { $0.lookY = 1; $0.lookX = -1 }), K(6, hold2.with { $0.lookY = 1 }),
             K(6, hold2.with { $0.lookY = 1; $0.lookX = 1 }), K(1, hold2.with { $0.lookY = 1; $0.eyes = .dash }),
-            K(3, hold2.with { $0.lookY = 1; $0.lookX = 1; $0.armRY = 0 })], held: true)
+            K(5, hold2.with { $0.lookY = 1; $0.lookX = 1; $0.armRY = 0 })], held: true)
         c["burstRead"] = ClipData(keys: [
             K(2, hold2.with { $0.lookY = 1; $0.lookX = -1 }), K(2, hold2.with { $0.lookY = 1; $0.lookX = 1 }),
             K(2, hold2.with { $0.lookY = 1; $0.lookX = 1; $0.armRY = 0 })], held: true)
@@ -154,8 +154,8 @@ enum AnimationData {
         c["search"] = ClipData(keys: [
             K(4, lens.with { $0.lookX = 1; $0.profile = .right }), K(2, lens.with { $0.armRX = 1; $0.lookX = 1 }),
             K(3, lens.with { $0.armRX = 2 }), K(2, lens.with { $0.armRX = 3; $0.lookX = -1 }),
-            K(4, lens.with { $0.armRX = 3; $0.lookX = -1; $0.profile = .left }), K(2, lens.with { $0.armRX = 2; $0.lookX = -1 }),
-            K(3, lens.with { $0.armRX = 1 })], held: true)
+            K(6, lens.with { $0.armRX = 3; $0.lookX = -1; $0.profile = .left }), K(2, lens.with { $0.armRX = 2; $0.lookX = -1 }),
+            K(5, lens.with { $0.armRX = 1 })], held: true)
         c["webSearch"] = ClipData(keys: [
             K(5, lens.with { $0.armRX = 1; $0.lookX = 1 }), K(3, lens.with { $0.armRX = 2 }),
             K(5, lens.with { $0.armRX = 3; $0.lookX = -1 }), K(3, lens.with { $0.armRX = 2 })], held: true)
@@ -172,7 +172,7 @@ enum AnimationData {
         c["test"] = ClipData(keys: [
             K(5, rightHold.with { $0.lookX = 1; $0.eyes = .tall }), K(2, rightHold.with { $0.armRY = -1; $0.lookX = 1 }),
             K(2, rightHold.with { $0.lookX = 1 }), K(2, rightHold.with { $0.armRY = -1; $0.lookX = 1 }),
-            K(6, rightHold.with { $0.lookX = 1; $0.eyes = .tall }), K(1, rightHold.with { $0.eyes = .dash })], held: true)
+            K(12, rightHold.with { $0.lookX = 1; $0.eyes = .tall }), K(1, rightHold.with { $0.eyes = .dash })], held: true)
         c["testPass"] = ClipData(keys: [
             K(2, squash), K(3, armsUp1.with { $0.lift = 1 }), K(10, armsUp2.with { $0.lift = 1; $0.blush = true }),
             K(3, armsUp1.with { $0.blush = true }), K(8, P { $0.blush = true })], airborne: true)
@@ -182,13 +182,13 @@ enum AnimationData {
         c["build"] = ClipData(keys: [
             K(3, P { $0.armRY = -2; $0.lookX = 1; $0.lookY = 1 }), K(2, P { $0.armRY = -1; $0.lookX = 1; $0.lookY = 1 }),
             K(1, P { $0.armRY = 0; $0.lookX = 1; $0.lookY = 1 }),
-            K(2, P { $0.armRY = 1; $0.lookX = 1; $0.lookY = 1; $0.eyes = .dash; $0.squash = 1 }), K(4, P { $0.armRY = 0; $0.lookX = 1; $0.lookY = 1 }),
+            K(2, P { $0.armRY = 1; $0.lookX = 1; $0.lookY = 1; $0.eyes = .dash; $0.squash = 1 }), K(3, P { $0.armRY = 0; $0.lookX = 1; $0.lookY = 1 }),
             K(1, P { $0.armRY = -1; $0.lookX = 1; $0.lookY = 1 })], held: true, maxDelta: 26)
         c["git"] = ClipData(keys: [
             K(8, P { $0.armRY = -1; $0.lookX = 1; $0.profile = .right }), K(2, P { $0.armRY = -2; $0.lookX = 1; $0.profile = .right }),
-            K(6, P { $0.armRY = -1; $0.lookX = 1; $0.profile = .right }), K(2, P { $0.lookX = 1 }), K(1, blink), K(3, P { $0.lookX = 1 })])
+            K(6, P { $0.armRY = -1; $0.lookX = 1; $0.profile = .right }), K(2, P { $0.lookX = 1 }), K(1, blink), K(5, P { $0.lookX = 1 })])
         let catchArms = P { $0.armLX = 1; $0.armRX = 1; $0.armLY = -1; $0.armRY = -1; $0.lookY = -1 }
-        c["install"] = ClipData(keys: [K(5, catchArms, cut: true), K(2, catchArms.with { $0.squash = 1 }), K(5, catchArms), K(2, catchArms.with { $0.squash = 1 }), K(5, catchArms), K(2, catchArms.with { $0.squash = 1 }), K(8, catchArms.with { $0.lookY = 0 })], held: true)
+        c["install"] = ClipData(keys: [K(5, catchArms, cut: true), K(2, catchArms.with { $0.squash = 1 }), K(5, catchArms), K(2, catchArms.with { $0.squash = 1 }), K(5, catchArms), K(2, catchArms.with { $0.squash = 1 }), K(3, catchArms.with { $0.lookY = 0 })], held: true)
         c["migrate"] = ClipData(keys: [K(3, hold2.with { $0.leg = [1, 0, 1, 0] }), K(3, hold2.with { $0.leg = [0, 1, 0, 1] })], held: true)
         c["docker"] = ClipData(keys: [K(6, hold2), K(3, hold2.with { $0.lift = 1 }), K(6, hold2), K(1, hold2.with { $0.eyes = .dash })], held: true, airborne: true)
         c["pull"] = ClipData(keys: [K(4, P { $0.armLX = 1; $0.armRX = 1; $0.armLY = -1; $0.armRY = -1; $0.lookY = -1 }), K(2, P { $0.armLX = 1; $0.armRX = 1 }), K(4, hold2), K(8, hold2.with { $0.blush = true }), K(4, hold2), K(2, P { $0.armLX = 1; $0.armRX = 1 })], held: true)
@@ -198,19 +198,19 @@ enum AnimationData {
         c["commit"] = ClipData(keys: [K(4, P { $0.armRY = -2; $0.lookY = 1 }), K(2, P { $0.armRY = -1; $0.lookY = 1 }), K(1, P { $0.armRY = 0; $0.lookY = 1 }), K(6, P { $0.armRY = 1; $0.lookY = 1; $0.squash = 1 }), K(4, P { $0.armRY = 0; $0.lookY = 1 }), K(2, P { $0.armRY = -1; $0.lookY = 1 })], held: true)
         c["deploy"] = ClipData(keys: [
             K(4, P { $0.armRY = -1; $0.lookX = 1 }), K(3, P { $0.armRY = -2; $0.lookY = -1 }), K(2, P { $0.armRY = -3; $0.lift = 1; $0.lookY = -1 }),
-            K(10, P { $0.armRY = -2; $0.lookY = -1; $0.eyes = .tall }), K(3, P { $0.armRY = -1 })], airborne: true)
+            K(12, P { $0.armRY = -2; $0.lookY = -1; $0.eyes = .tall }), K(3, P { $0.armRY = -1 })], airborne: true)
         c["push"] = ClipData(keys: [
             K(4, P { $0.armRY = 0; $0.lookX = 1 }), K(2, P { $0.armRY = -1; $0.lean = -1 }), K(1, P { $0.armRY = -2 }), K(2, P { $0.armRY = -2; $0.lean = 1 }, cut: true),
             K(10, P { $0.armRY = -1; $0.lookX = 1; $0.lookY = -1; $0.lean = 1 }), K(4, P { $0.lookX = 1 })])
         c["handoff"] = ClipData(keys: [
             K(4, rightHold.with { $0.armRY = 1; $0.lookX = 1 }), K(3, rightHold.with { $0.armRY = 1; $0.lean = 1; $0.lookX = 1 }),
             K(4, P { $0.lean = 1; $0.lookX = 1; $0.blush = true }, cut: true), K(6, P { $0.lookX = 1; $0.blush = true })])
-        c["agent"] = ClipData(keys: [K(3, P { $0.armLY = -2; $0.armRY = -1 }), K(3, P { $0.armLY = -1; $0.armRY = -2 }), K(8, P { $0.lookX = 1 }), K(8, P { $0.lookX = -1 })])
+        c["agent"] = ClipData(keys: [K(3, P { $0.armLY = -2; $0.armRY = -1 }), K(3, P { $0.armLY = -1; $0.armRY = -2 }), K(9, P { $0.lookX = 1 }), K(9, P { $0.lookX = -1 })])
 
         // Waiting on the user: clear, not frantic.
         c["ask"] = ClipData(keys: [
-            K(10, P { $0.armRY = -3; $0.eyes = .tall }), K(2, P { $0.armRY = -2; $0.eyes = .tall }), K(2, P { $0.armRY = -3; $0.eyes = .tall }),
-            K(2, P { $0.armRY = -2; $0.eyes = .tall }), K(10, P { $0.armRY = -3; $0.eyes = .tall; $0.lookY = 1 }), K(1, P { $0.armRY = -3; $0.eyes = .dash })])
+            K(9, P { $0.armRY = -3; $0.eyes = .tall }), K(2, P { $0.armRY = -2; $0.eyes = .tall }), K(2, P { $0.armRY = -3; $0.eyes = .tall }),
+            K(2, P { $0.armRY = -2; $0.eyes = .tall }), K(8, P { $0.armRY = -3; $0.eyes = .tall; $0.lookY = 1 }), K(1, P { $0.armRY = -3; $0.eyes = .dash })])
         c["yourTurn"] = ClipData(keys: [K(8, P { $0.lookY = 1 }), K(3, P { $0.lookY = 1; $0.leg = [0, 0, 0, 1] }), K(3, P { $0.lookY = 1 }), K(3, P { $0.lookY = 1; $0.leg = [0, 0, 0, 1] }), K(8, P { $0.lookY = 1 }), K(1, blink)])
         c["watch"] = ClipData(keys: [K(8, P { $0.armLX = 1; $0.armLY = -1; $0.lookX = -1 }), K(3, P { $0.leg = [0, 0, 0, 1] }), K(3), K(3, P { $0.leg = [0, 0, 0, 1] }), K(4), K(1, blink)])
         c["flag"] = ClipData(keys: [K(4, P { $0.armRY = -2; $0.lookY = -1 }), K(4, P { $0.armRY = -3; $0.lookY = -1 })], held: true)
@@ -257,7 +257,7 @@ enum AnimationData {
         c["talking"] = c["chatTalk"]
         for id in ["offline", "outOfCredits", "rateLimited", "unauthorized", "timeout"] { c[id] = ClipData(keys: slump(-1)) }
         c["tea"] = ClipData(keys: [
-            K(10, rightHold.with { $0.armRY = 1 }), K(2, rightHold.with { $0.armRX = 2; $0.armRY = 0 }),
+            K(6, rightHold.with { $0.armRY = 1 }), K(2, rightHold.with { $0.armRX = 2; $0.armRY = 0 }),
             K(6, rightHold.with { $0.armRX = 2; $0.armRY = -1; $0.eyes = .dash; $0.blush = true }), K(2, rightHold.with { $0.armRX = 2; $0.armRY = 0 }),
             K(8, rightHold.with { $0.armRY = 1; $0.blush = true })], held: true)
         c["coffee"] = c["tea"]

@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.gif">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/hero-light.gif">
-    <img src="docs/assets/hero-dark.gif" width="720" alt="Three Clawds on three Claude Code sessions: one asking for your OK, one reading, one running tests">
+    <img src="docs/assets/hero-dark.gif" width="100%" alt="Three Clawds on three Claude Code sessions: web needs you and raises a hand, api is building with a hammer, docs is launching a deploy rocket">
   </picture>
 </p>
 
@@ -36,17 +36,17 @@
 ## Gallery
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gallery-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/gallery-light.png">
-  <img src="docs/assets/gallery-dark.png" width="645" alt="Sixteen of the animations: read, edit, bash, search, web, plan, test, build, git, install, agent, deploy, tea, bandage, oops, sleep">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gallery-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/gallery-light.gif">
+  <img src="docs/assets/gallery-dark.gif" width="100%" alt="Twelve animations playing: read, edit, search, web, test, build, git, install, tests pass, deploy, tea break, sleep">
 </picture>
 
 Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is generated from the app's catalog.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/team-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/team-light.png">
-  <img src="docs/assets/team-dark.png" alt="Six Clawds in a row with name tags and session scarves. The one waiting for approval is first, and a +2 badge counts two more sessions">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/team-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/team-light.gif">
+  <img src="docs/assets/team-dark.gif" width="100%" alt="Six Clawds working side by side with name tags and session scarves. The one waiting for approval is first, and a +2 badge counts two more sessions">
 </picture>
 
 ## Features
@@ -60,9 +60,8 @@ Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is g
 | **Chat on your OpenRouter key** | Click a Clawd or press <kbd>⌃⌥Space</kbd>. Your key is stored in the macOS Keychain. |
 | **Private by default** | No accounts and no analytics. Nothing goes over the network unless you chat. |
 
-<img src="docs/assets/hover-card.png" width="340" alt="Hover card for the api session: working for 4:12, 23 tools, the latest message from Claude, a Jump button and the last four actions">
-
-<sub>The hover card above is rendered offscreen from the app's own view with a demo session.</sub>
+<p align="center"><img src="docs/assets/hover-card.png" width="400" alt="Hover card for the api session: working for 4:12, 23 tools, the latest message from Claude, a Jump button and the last four actions">
+<br><sub>The hover card, rendered offscreen from the app's own view with a demo session.</sub></p>
 
 ## How it works
 

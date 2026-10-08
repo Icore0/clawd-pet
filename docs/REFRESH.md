@@ -27,8 +27,8 @@ gh release create v1.0.0 app/ClawdPet.zip app/ClawdPet.dmg app/SHA256SUMS.txt \
 
 `docs/assets/build/export_frames.sh` compiles `ExportFrames.swift` together with `app/Sources/*.swift`, excluding `main.swift`. That gives a small tool that:
 
-- dumps every catalog clip as 12 fps cells, using the app's recording `Pen`. These become the gallery.
-- renders the real team panel (`Renderer.drawTeam`) offscreen for the scenes in `docs/assets/build/scenes/`. These become the hero GIF, the team shot and the social preview.
+- exports looping cell frames for each scene in `docs/assets/build/scenes/` (`poses` mode): the app's own pose data, carried props, pixel effects and session scarves, with hops and shakes applied. These become the hero banner, the animated gallery, the team row and the social preview.
+- renders the real hover card (`ActivityView`) offscreen for a demo session (`card` mode). Glass and buttons don't render offscreen, so it uses a solid panel.
 - prints `AnimationCatalog.markdown()`, the same table as `--dump-catalog`.
 
-`render.py` then composes the dark and light variants with Pillow. Pixel art is only scaled by whole numbers. Nothing is written into `app/`.
+`render.py` then composes dark and light variants with Pillow. Pixel art is drawn at whole-number scale only. Showcase clips loop in 12, 16 or 24 frames, so each 48-frame GIF loops with no seam. Nothing is written into `app/`.

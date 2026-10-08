@@ -13,6 +13,7 @@ struct ExportFrames {
         if args.count >= 4 && args[1] == "scene" { scene(spec: args[2], dir: args[3]); return }
         if args.count >= 2 && args[1] == "catalog" { print(AnimationCatalog.markdown()); return }
         if args.count >= 4 && args[1] == "card" { card(spec: args[2], out: args[3]); return }
+        if args.count >= 4 && args[1] == "poses" { poses(spec: args[2], out: args[3]); return }
         cells()
     }
 
@@ -80,6 +81,35 @@ struct ExportFrames {
 }
 
 extension ExportFrames {
+    /// Looping cell frames for README scenes, from the app's own pose data, props, effects and scarves.
+    /// Lift and dx are applied, so hops and shakes show. spec: {"frames": 48, "items": [{"id": "ask", "accent": "#5AA9FF"}]}
+    static func poses(spec: String, out: String) {
+        let s = try! JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: spec))) as! [String: Any]
+        let n = s["frames"] as? Int ?? 48
+        let renderer = Renderer(m: PetModel())
+        var items: [[String: Any]] = []
+        for item in s["items"] as! [[String: Any]] {
+            let id = item["id"] as! String
+            var accent: Color?
+            if let hex = item["accent"] as? String, let v = UInt32(hex.dropFirst(), radix: 16) {
+                accent = Color(.sRGB, red: Double((v >> 16) & 255) / 255, green: Double((v >> 8) & 255) / 255, blue: Double(v & 255) / 255, opacity: 1)
+            }
+            var frames: [[[Int]]] = []
+            for i in 0..<n {
+                let t = Double(i) / 12
+                let pose = renderer.pose(id, quirk: 0, local: -1, t: t, age: t, now: Date(timeIntervalSinceReferenceDate: t))
+                let pen = Pen(recordingU: 1)
+                renderer.paintSprite(pen, pose, id, t, t, accent: accent)
+                renderer.paintEffects(pen, id, pose, frame: renderer.clipFrame(id, age: t), t: t, session: nil, now: Date(timeIntervalSinceReferenceDate: t))
+                var cells: [[Int]] = []
+                for (y, row) in pen.cells { for (x, c) in row { cells.append([x + pose.dx, y - pose.lift, Int(c)]) } }
+                frames.append(cells)
+            }
+            items.append(["id": id, "frames": frames])
+        }
+        try! JSONSerialization.data(withJSONObject: ["items": items]).write(to: URL(fileURLWithPath: out))
+    }
+
     /// The real hover card (`ActivityView`) for one demo session, rendered offscreen on a solid backdrop.
     /// spec: {"session": {...}, "events": [["edit","routes.ts +12 −3"], ...], "prompt": "...", "message": "..."}
     @MainActor static func card(spec: String, out: String) {
