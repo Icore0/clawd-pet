@@ -3,30 +3,12 @@ import Carbon.HIToolbox
 import ServiceManagement
 import SwiftUI
 
-final class OpenRouterProbe {
-    var status = "ok"
-    var text = ""
-    var cost = -1.0
-    var done = false
-}
-
 if CommandLine.arguments.contains("--dump-catalog") {
     print(AnimationCatalog.markdown())
     exit(0)
 }
-if CommandLine.arguments.contains("--openrouter-selftest") {
-    let key = ProcessInfo.processInfo.environment["OPENROUTER_TEST_KEY"] ?? ""
-    if key.isEmpty { fputs("missing key\n", stderr); exit(2) }
-    let box = OpenRouterProbe()
-    OpenRouter.send(model: "openai/gpt-4o-mini", key: key, system: "test", messages: [ChatLine(role: "user", text: "hi")], onStatus: { status in
-        box.status = status.rawValue
-        box.done = true
-    }, onDelta: { box.text += $0 }, onCost: { box.cost = $0 }, onFinish: { box.done = true })
-    let deadline = Date().addingTimeInterval(25)
-    while !box.done && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
-    if box.status == "ok" && box.text.isEmpty && !box.done { box.status = "timeout" }
-    print("status=\(box.status) text=\(box.text) cost=\(box.cost)")
-    exit(box.done ? 0 : 1)
+if CommandLine.arguments.contains("--pixel-audit") {
+    exit(runPixelAudit())
 }
 if CommandLine.arguments.contains("--hook") { runHookMode() }
 if CommandLine.arguments.contains("--install-hooks") { do { try HookInstaller.install(); print("hooks installed in \(settingsPath)") } catch { print(error.localizedDescription); exit(1) }; exit(0) }
@@ -62,6 +44,10 @@ if CommandLine.arguments.contains("--demo-team") {
 if CommandLine.arguments.contains("--selftest") {
     let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
     if !home.contains("/tmp/") && !home.contains("session-pet-test") { exit(2) }
+    if let problem = OpenRouter.runChecks() {
+        print(problem)
+        exit(1)
+    }
     if let problem = AnimationCatalog.runChecks() {
         print(problem)
         exit(1)
@@ -361,6 +347,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if CommandLine.arguments.contains("--gallery") {
             model.demo = AnimationCatalog.all.map { $0.id }
+            let args = CommandLine.arguments
+            if let i = args.firstIndex(of: "--zoom"), i + 1 < args.count, let z = Double(args[i + 1]) {
+                model.scale = max(1, (model.scale * z).rounded())
+            }
         }
         if teamDemoFlag {
             model.teamDemo = true
@@ -467,7 +457,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.setFrameOrigin(NSPoint(x: f.maxX - panel.frame.width + 20, y: f.minY - 6))
         UserDefaults.standard.removeObject(forKey: "pos"); positionChat()
     }
-    func savePosition() { UserDefaults.standard.set(NSStringFromPoint(panel.frame.origin), forKey: "pos") }
+    func savePosition() {
+        let scale = panel.backingScaleFactor
+        var origin = panel.frame.origin
+        origin.x = (origin.x * scale).rounded() / scale
+        origin.y = (origin.y * scale).rounded() / scale
+        panel.setFrameOrigin(origin)
+        UserDefaults.standard.set(NSStringFromPoint(origin), forKey: "pos")
+    }
 
     func positionChat() {
         guard chatPanel != nil, chatPanel.isVisible else { return }
@@ -512,6 +509,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func toggleChat() { chatPanel.isVisible ? closeChat() : openChat() }
     func openChat() {
         model.chatSid = model.selectedSid ?? model.sessions.first?.sid
+        chat.attachSession()
         if model.chatStatus == nil { model.chatStatus = chat.status }
         model.chatOpen = true
         activityPanel.orderOut(nil)
@@ -595,18 +593,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let secure = NSSecureTextField(frame: NSRect(x: 16, y: 112, width: 348, height: 24))
         secure.placeholderString = "OpenRouter API key"
         let popup = NSPopUpButton(frame: NSRect(x: 16, y: 76, width: 348, height: 26))
-        popup.addItems(withTitles: chat.models)
-        if !chat.models.contains(chat.model) { chat.models.insert(chat.model, at: 0); popup.insertItem(withTitle: chat.model, at: 0) }
-        popup.selectItem(withTitle: chat.model)
+        for choice in orModels {
+            popup.addItem(withTitle: choice.label)
+            popup.lastItem?.representedObject = choice.id
+        }
+        if let match = orModels.first(where: { $0.id == chat.model }) {
+            popup.selectItem(withTitle: match.label)
+        } else if let first = orModels.first {
+            chat.model = first.id
+            popup.selectItem(at: 0)
+        }
         let cli = NSButton(checkboxWithTitle: "Use Claude Code CLI instead", target: self, action: #selector(aiCLI(_:)))
         cli.frame = NSRect(x: 16, y: 46, width: 348, height: 22)
-        if KeychainStore.copy() != nil && UserDefaults.standard.object(forKey: "useClaudeCLI") == nil { chat.useCLI = false }
+        if KeychainStore.load() != nil && UserDefaults.standard.object(forKey: "useClaudeCLI") == nil { chat.useCLI = false }
         cli.state = chat.useCLI ? .on : .off
+        let remove = NSButton(title: "Remove", target: self, action: #selector(aiRemove(_:)))
+        remove.frame = NSRect(x: 188, y: 12, width: 84, height: 28)
         let save = NSButton(title: "Save", target: self, action: #selector(aiSave(_:)))
         save.frame = NSRect(x: 280, y: 12, width: 84, height: 28)
         panel.contentView?.addSubview(secure)
         panel.contentView?.addSubview(popup)
         panel.contentView?.addSubview(cli)
+        panel.contentView?.addSubview(remove)
         panel.contentView?.addSubview(save)
         secure.tag = 11
         popup.tag = 12
@@ -619,11 +627,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         chat.useCLI = button.state == .on
         UserDefaults.standard.set(chat.useCLI, forKey: "useClaudeCLI")
     }
+    @objc func aiRemove(_ button: NSButton) {
+        KeychainStore.delete()
+        if let secure = aiPanel?.contentView?.viewWithTag(11) as? NSSecureTextField { secure.stringValue = "" }
+    }
     @objc func aiSave(_ button: NSButton) {
         guard let panel = aiPanel, let secure = panel.contentView?.viewWithTag(11) as? NSSecureTextField else { return }
-        if let popup = panel.contentView?.viewWithTag(12) as? NSPopUpButton, let title = popup.titleOfSelectedItem {
-            chat.model = title
-            if !chat.models.contains(title) { chat.models.append(title) }
+        if let popup = panel.contentView?.viewWithTag(12) as? NSPopUpButton, let id = popup.selectedItem?.representedObject as? String {
+            chat.model = id
         }
         let typed = secure.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if !typed.isEmpty && KeychainStore.save(typed) {
@@ -631,6 +642,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if !UserDefaults.standard.bool(forKey: "openrouterKeyNoted") {
                 UserDefaults.standard.set(true, forKey: "openrouterKeyNoted")
                 chat.keyNote = "The key stays in the Keychain. Messages go to OpenRouter with the session summary, not file contents."
+            } else {
+                chat.keyNote = "key saved"
             }
         }
         panel.orderOut(nil)

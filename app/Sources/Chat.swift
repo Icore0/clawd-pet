@@ -31,8 +31,7 @@ final class ChatModel: ObservableObject {
     @Published var cost: Double = 0
     var status: ChatStatus = .opening
     var lines: [ChatLine] = []
-    var models: [String] = ["openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-3.5-haiku"]
-    var model = "openai/gpt-4o-mini"
+    var model = orModels[0].id
     var useCLI = UserDefaults.standard.bool(forKey: "useClaudeCLI")
     var sessionId: String?
     var onChange: () -> Void = {}
@@ -47,15 +46,20 @@ final class ChatModel: ObservableObject {
         onStatus(next)
     }
 
-    func systemBlock() -> String {
+    func sessionSummary() -> String {
         let pet = AppDelegate.shared.model
-        var parts: [String] = []
-        if !pet.sessionContext.isEmpty { parts.append(pet.sessionContext) }
         let session = pet.sessions.first { $0.sid == pet.chatSid } ?? pet.sessions.first
-        let events = (session?.events ?? pet.events).suffix(20).map(\.text).filter { !$0.isEmpty }
+        guard let session else { return "no session" }
+        var parts = [
+            "project: \(session.project)",
+            "cwd: \(session.cwd)",
+            "activity: \(session.activityId.isEmpty ? session.kind.rawValue : session.activityId)"
+        ]
+        let events = session.events.suffix(20).map(\.text).filter { !$0.isEmpty }
         if !events.isEmpty { parts.append(events.joined(separator: "\n")) }
-        parts.append("toolCount: \(session?.toolCount ?? pet.toolCount)")
-        if UserDefaults.standard.bool(forKey: "transcriptTail"), let path = session?.transcript, !path.isEmpty,
+        let turn = session.turnStart.map { String($0) } ?? "none"
+        parts.append("turnStart: \(turn) toolCount: \(session.toolCount) lastDurationMs: \(session.lastDurationMs) errorStreak: \(session.errorStreak)")
+        if UserDefaults.standard.bool(forKey: "transcriptTail"), !session.transcript.isEmpty, let path = Optional(session.transcript),
            let data = FileManager.default.contents(atPath: path),
            let raw = String(data: data, encoding: .utf8) {
             let tail = raw.split(separator: "\n").suffix(20).joined(separator: "\n")
@@ -64,42 +68,60 @@ final class ChatModel: ObservableObject {
         return parts.joined(separator: "\n")
     }
 
+    /// One system message for the character whose chat just opened. Transcript text stays out unless `transcriptTail` is true.
+    func attachSession() {
+        lines.removeAll { $0.role == "system" }
+        lines.insert(ChatLine(role: "system", text: sessionSummary()), at: 0)
+        if lines.count > 20 { lines = Array(lines.suffix(20)) }
+        onChange()
+    }
+
+    func status(for error: ORError) -> ChatStatus {
+        switch error {
+        case .noKey, .badKey: return .unauthorized
+        case .noCredits: return .outOfCredits
+        case .rateLimited: return .rateLimited
+        case .offline: return .offline
+        case .timeout: return .timeout
+        case .server, .other: return .offline
+        }
+    }
+
     func send() {
         let msg = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
         guard !msg.isEmpty, !isBusy else { return }
-        text = ""; reply = ""; isBusy = true; setListening(false); onChange()
+        text = ""; reply = ""; cost = 0; isBusy = true; setListening(false); onChange()
         lines.append(ChatLine(role: "user", text: msg))
         if lines.count > 20 { lines = Array(lines.suffix(20)) }
         setStatus(.reading)
-        if !useCLI, let key = KeychainStore.copy(), !key.isEmpty {
+        if !useCLI, let key = KeychainStore.load(), !key.isEmpty {
             setStatus(.thinking)
-            OpenRouter.send(model: model, key: key, system: systemBlock(), messages: lines, onStatus: { [weak self] status in
-                DispatchQueue.main.async {
-                    self?.setStatus(status)
-                    self?.isBusy = false
-                    self?.onChange()
-                }
-            }, onDelta: { [weak self] chunk in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    if self.status != .talking { self.setStatus(.talking) }
-                    self.reply += chunk
-                    self.onChange()
-                }
+            let messages = lines.suffix(20).map { ORMessage(role: $0.role, content: $0.text) }
+            OpenRouter.stream(messages: messages, model: model, key: key, onDelta: { [weak self] chunk in
+                guard let self else { return }
+                if self.status != .talking { self.setStatus(.talking) }
+                self.reply += chunk
+                self.onChange()
             }, onCost: { [weak self] value in
-                DispatchQueue.main.async { self?.cost = value }
-            }, onFinish: { [weak self] in
-                DispatchQueue.main.async {
-                    guard let self else { return }
+                self?.cost = value
+                self?.onChange()
+            }, onDone: { [weak self] result in
+                guard let self else { return }
+                switch result {
+                case .success:
                     let answer = self.reply.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !answer.isEmpty {
                         self.lines.append(ChatLine(role: "assistant", text: answer.replacingOccurrences(of: "\n", with: " ")))
                         if self.lines.count > 20 { self.lines = Array(self.lines.suffix(20)) }
                     }
-                    self.isBusy = false
-                    self.onChange()
+                    self.setStatus(.talking)
                     self.onReply()
+                case .failure(let error):
+                    self.reply = error.message
+                    self.setStatus(self.status(for: error))
                 }
+                self.isBusy = false
+                self.onChange()
             })
             return
         }
@@ -205,7 +227,7 @@ struct ChatView: View {
 
     var card: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if chat.isBusy {
+            if chat.isBusy && chat.reply.isEmpty {
                 HStack(spacing: 5) {
                     ForEach(0..<3) { i in
                         TimelineView(.animation) { tl in
@@ -217,12 +239,15 @@ struct ChatView: View {
             } else {
                 ScrollView { Text(chat.reply).font(.system(size: 13)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                     .frame(height: replyHeight)
-                HStack {
-                    Spacer()
-                    Button("New chat") { chat.newChat() }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
-                    Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(chat.reply, forType: .string) }
-                        .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            HStack {
+                if chat.cost > 0 {
+                    Text(String(format: "$%.4f", chat.cost)).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
+                Spacer()
+                Button("New chat") { chat.newChat() }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+                Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(chat.reply, forType: .string) }
+                    .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 10).frame(width: Self.width)
