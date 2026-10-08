@@ -55,10 +55,14 @@ Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is g
 |---|---|
 | **A team of Clawds** | One per running session, six side by side, then a `+N` badge. Waiting sessions move to the front. |
 | **Live activity** | Each Clawd shows what its session is doing: reading, editing, tests, builds, git, installs, web, sub-agents, plans or compaction. |
-| **80+ pixel animations** | A deploy rocket, a tea break on long commands, a bandage after three failures, and high-fives and pass-the-parcel between sessions. |
-| **Hover card** | Hover over a Clawd to see its project, turn timer, tool count and last few actions. |
+| **80+ pixel animations** | Hand-timed 12 fps frames: a deploy rocket, a tea break on long commands, a check mark when tests pass, high-fives and pass-the-parcel between sessions. |
+| **Live hover card** | Hover over a Clawd: project, turn timer, last actions and the session's latest message as it arrives. **Jump** takes you to that session's window. |
 | **Chat on your OpenRouter key** | Click a Clawd or press <kbd>⌃⌥Space</kbd>. Your key is stored in the macOS Keychain. |
 | **Private by default** | No accounts and no analytics. Nothing goes over the network unless you chat. |
+
+<img src="docs/assets/hover-card.png" width="340" alt="Hover card for the api session: working for 4:12, 23 tools, the latest message from Claude, a Jump button and the last four actions">
+
+<sub>The hover card above is rendered offscreen from the app's own view with a demo session.</sub>
 
 ## How it works
 
@@ -72,7 +76,8 @@ Claude Code runs `ClawdPet --hook` on session and tool events. The hook updates 
 
 ## Privacy
 
-- **Stored:** tool names, file base names, the short description Claude writes for each command, the session's folder, and counters. Everything stays in `~/.claude/clawd/sessions/`.
+- **Stored:** tool names, file base names, the short description Claude writes for each command, the session's folder, which app it runs in (for Jump), and counters. Everything stays in `~/.claude/clawd/sessions/`.
+- **Shown, never stored:** the hover card reads the session's latest message from its local transcript to display it. It's never written to a file or sent anywhere. Turn it off in the menu.
 - **Never stored:** file contents or full commands.
 - **Network:** only for chat. Without an OpenRouter key, chat runs your local `claude` CLI instead.
 - **Key:** stored in the macOS Keychain, never in a file.
@@ -94,6 +99,7 @@ Checks, run from the repo root with a throwaway `HOME`:
 ```sh
 HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest
 HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --frame-audit
 ```
 </details>
 
@@ -123,6 +129,9 @@ Yes, that's what it's for. Each session gets its own Clawd, name tag and scarf c
 
 **Is it safe to connect?**
 Connect adds hook entries that call the app with `--hook`, after saving a backup to `~/.claude/settings.json.clawd-backup`. If your `settings.json` isn't valid JSON, it leaves the file alone. The hook only writes metadata, and the source is here if you want to check.
+
+**Can it jump to the right window?**
+Terminal: the exact tab (macOS asks once for permission). iTerm2 uses the same approach, and VS Code and Cursor open the session's folder in that editor, but those three are untested so far. Anything else, including the Claude desktop app: the app comes forward and a note says it couldn't pick the session.
 
 **How do I disconnect?**
 Choose **Disconnect and remove hooks** from the menu-bar icon. Hooks you added yourself stay.

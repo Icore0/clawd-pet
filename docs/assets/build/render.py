@@ -138,6 +138,15 @@ def social(work):
     save_png(im, ASSETS / "social-preview.png", colors=128)
 
 
+def card(work):
+    """The real hover card (ActivityView), rendered offscreen for a demo session. Glass becomes a solid panel."""
+    out = work / "card.png"
+    env = dict(os.environ, HOME=str(work / "home"))
+    subprocess.check_call([str(work / "export-frames"), "card", str(HERE / "scenes" / "card.json"), str(out)], env=env)
+    im = Image.open(out).convert("RGBA")
+    save_png(on(INK, im), ASSETS / "hover-card.png", colors=128)
+
+
 def diagram():
     steps = [("Claude Code", "hooks fire on tool use"), ("one JSON per session", "~/.claude/clawd/sessions/"),
              ("Clawd Pet", "watches the folder"), ("one Clawd per session", "on your desktop")]
@@ -183,6 +192,7 @@ def main():
     gallery(cells)
     team(work)
     social(work)
+    card(work)
     diagram()
     animations_md(work, cells)
     total = 0
