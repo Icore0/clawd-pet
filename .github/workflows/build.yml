@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-26   # the app uses glassEffect, which needs the macOS 26 SDK
     steps:
       - uses: actions/checkout@v4
 
