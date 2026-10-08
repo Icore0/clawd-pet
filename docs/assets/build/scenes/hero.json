@@ -1,0 +1,5 @@
+{"scale": 10, "px": 2, "frames": 48, "sessions": [
+  {"project": "docs", "mood": "working", "kind": "read", "say": "README.md"},
+  {"project": "api", "mood": "working", "kind": "test", "say": "Run unit tests"},
+  {"project": "web", "mood": "waiting", "kind": "ask", "say": "Allow Bash?"}
+]}
