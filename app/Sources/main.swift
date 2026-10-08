@@ -59,14 +59,24 @@ if CommandLine.arguments.contains("--demo-team") {
     }
     if !teamDemoFlag { exit(0) }
 }
+if CommandLine.arguments.contains("--discover") {
+    for d in TranscriptDiscovery().scan(maxAgeMs: HideAfter.ms) {
+        print(d.sid.prefix(8), d.entrypoint, Int((Date().timeIntervalSince1970 * 1000 - d.modified) / 60_000), "min", d.title.isEmpty ? d.cwd : d.title)
+    }
+    exit(0)
+}
 if CommandLine.arguments.contains("--selftest") {
     let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
     if !home.contains("/tmp/") && !home.contains("session-pet-test") { exit(2) }
-    if let problem = OpenRouter.runChecks() {
+    if let problem = ChatAPI.runChecks() {
         print(problem)
         exit(1)
     }
     if let problem = AnimationCatalog.runChecks() {
+        print(problem)
+        exit(1)
+    }
+    if let problem = TranscriptDiscovery.selfCheck() {
         print(problem)
         exit(1)
     }
@@ -145,7 +155,7 @@ final class DragView: NSView {
 
     init(model: PetModel, clock: FrameClock, delegate: AppDelegate) {
         self.model = model; self.clock = clock; self.delegate = delegate
-        super.init(frame: NSRect(x: 0, y: 0, width: teamPanelWidth(count: model.sessions.count, scale: model.scale), height: canvasH))
+        super.init(frame: NSRect(x: 0, y: 0, width: teamPanelWidth(count: model.displaySessions.count, scale: model.scale), height: canvasH))
         let host = NSHostingView(rootView: PetView(model: model, clock: clock))
         host.frame = bounds; host.autoresizingMask = [.width, .height]
         addSubview(host)
@@ -160,13 +170,13 @@ final class DragView: NSView {
     var lastMove = Date()
     var slotFrames: [NSRect] {
         let u = CGFloat(model.scale)
-        let n = min(6, max(1, model.sessions.count))
+        let n = min(6, max(1, model.displaySessions.count))
         let stride = 13 * u + 8
         let h = 10 * u + 12
         return (0..<n).map { i in NSRect(x: 8 + CGFloat(i) * stride, y: 8, width: 13 * u, height: h) }
     }
     var badgeFrame: NSRect? {
-        guard model.sessions.count > 6 else { return nil }
+        guard model.displaySessions.count > 6 else { return nil }
         let u = CGFloat(model.scale)
         let stride = 13 * u + 8
         return NSRect(x: 8 + 6 * stride, y: 8, width: 44, height: 10 * u + 12)
@@ -412,7 +422,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.loadSessions()
         }
 
-        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: teamPanelWidth(count: model.sessions.count, scale: model.scale), height: canvasH),
+        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: teamPanelWidth(count: model.displaySessions.count, scale: model.scale), height: canvasH),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false
         panel.level = .floating; panel.hidesOnDeactivate = false
@@ -526,12 +536,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let u = CGFloat(model.scale)
         let sc = NSScreen.screens.first { $0.frame.intersects(frame) } ?? NSScreen.main ?? NSScreen.screens[0]
         let vf = sc.visibleFrame
-        let w = panel?.frame.width ?? CGFloat(teamPanelWidth(count: model.sessions.count, scale: model.scale))
+        let w = panel?.frame.width ?? CGFloat(teamPanelWidth(count: model.displaySessions.count, scale: model.scale))
         return NSRect(x: vf.minX - w / 2 + 6 * u, y: vf.minY - 14,
                       width: vf.width - 12 * u, height: vf.height - 8 * u)
     }
     func fitPanel() {
-        let w = CGFloat(teamPanelWidth(count: model.sessions.count, scale: model.scale))
+        let w = CGFloat(teamPanelWidth(count: model.displaySessions.count, scale: model.scale))
         if abs(panel.frame.width - w) > 0.5 {
             var f = panel.frame
             f.size.width = w
@@ -627,7 +637,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sc = NSScreen.screens.first { $0.frame.intersects(f) } ?? NSScreen.main ?? NSScreen.screens[0]
         let vf = sc.visibleFrame
         // Beside the team, never over a Wigglet: left of the first slot, else right of the last.
-        let team = CGFloat(teamPanelWidth(count: model.sessions.count, scale: model.scale))
+        let team = CGFloat(teamPanelWidth(count: model.displaySessions.count, scale: model.scale))
         var x = f.minX + 8 - size.width
         if x < vf.minX + 4 { x = f.minX + team - 8 }
         x = min(x, vf.maxX - size.width - 4)
@@ -674,7 +684,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let connected = HookInstaller.isInstalled
         _ = add(connected ? "Connected to Claude Code" : "Connect to Claude Code…", #selector(connectAction), on: connected)
         _ = add("Disconnect and remove hooks", #selector(disconnectAction))
-        _ = add("AI settings", #selector(aiSettings))
+        _ = add("Chat settings…", #selector(aiSettings))
         _ = add("Play sounds", #selector(toggleSounds), on: soundsOn)
         _ = add("Show latest message in hover card", #selector(toggleLatest), on: model.showLatest)
         let size = NSMenu()

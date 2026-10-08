@@ -59,6 +59,7 @@ final class PetModel: ObservableObject {
     var stamp = 0.0         // ts of the current event (seeds the quip)
     var project = ""
     var sessions: [SessionPet] = []
+    let discovery = TranscriptDiscovery()
     var hoveredSid: String?
     /// The session the hover card shows. Survives the pointer moving from the Wigglet onto the card.
     var cardSid: String?
@@ -163,6 +164,7 @@ final class PetModel: ObservableObject {
             let ts = (o["ts"] as? NSNumber)?.doubleValue ?? 0
             if now - ts > 86_400_000 { try? fm.removeItem(atPath: path); continue }
             let sid = (o["sid"] as? String) ?? String(f.dropLast(5))
+            if now - ts > HideAfter.ms { continue }
             let storedMood = (o["mood"] as? String) ?? "idle"
             fileMood[sid] = storedMood
             var mood = storedMood
@@ -207,6 +209,18 @@ final class PetModel: ObservableObject {
                 hostApp: (o["hostApp"] as? String) ?? "",
                 tty: (o["tty"] as? String) ?? "",
                 lastNonIdle: lastNonIdle)
+        }
+        for d in discovery.scan(maxAgeMs: HideAfter.ms) where parsed[d.sid] == nil {
+            let host = TranscriptDiscovery.host(for: d.entrypoint)
+            let working = now - d.modified < 20_000
+            let previous = sessions.first { $0.sid == d.sid }
+            parsed[d.sid] = SessionPet(
+                sid: d.sid, cwd: d.cwd, project: d.title.isEmpty ? (d.cwd as NSString).lastPathComponent : d.title,
+                startedAt: d.created, transcript: d.path, lastTool: "", toolCount: 0, turnStart: nil,
+                errorStreak: 0, lastErrorAt: nil, mood: working ? "working" : "idle",
+                kind: working ? .think : .none, say: "", delta: "", ts: d.modified,
+                hostBundleId: host.bundle, hostApp: host.app,
+                lastNonIdle: working ? Date() : (previous?.lastNonIdle ?? Date(timeIntervalSince1970: d.modified / 1000)))
         }
         var next: [SessionPet] = []
         var kept = Set<String>()
@@ -258,14 +272,33 @@ final class PetModel: ObservableObject {
     }
 
     /// Waiting rows first. Each group keeps the `sessions` order (startedAt, then sid).
-    var displaySessions: [SessionPet] {
+    var sortedSessions: [SessionPet] {
         sessions.filter { $0.mood == "waiting" } + sessions.filter { $0.mood != "waiting" }
+    }
+    /// One Wigglet stands in for every session: the one waiting on you, else the busiest, else the latest.
+    var oneWigglet: Bool {
+        get { UserDefaults.standard.bool(forKey: "oneWigglet") }
+        set { UserDefaults.standard.set(newValue, forKey: "oneWigglet") }
+    }
+    var lead: SessionPet? {
+        sessions.max { a, b in
+            let ra = a.mood == "waiting" ? 2 : a.mood == "working" ? 1 : 0
+            let rb = b.mood == "waiting" ? 2 : b.mood == "working" ? 1 : 0
+            return ra != rb ? ra < rb : a.ts < b.ts
+        }
+    }
+    /// The characters on screen, in slot order.
+    var displaySessions: [SessionPet] {
+        if oneWigglet, let lead { return [lead] }
+        return sortedSessions
     }
 
     func sessionTag(_ s: SessionPet) -> String {
         let base = (s.project as NSString).lastPathComponent
         let dup = sessions.filter { ($0.project as NSString).lastPathComponent == base }.count > 1
         if dup {
+            // A session title (from the transcript) gets a short id; a folder name gets its parent folder.
+            if !base.isEmpty && base != (s.cwd as NSString).lastPathComponent { return "\(base) · \(s.sid.prefix(4))" }
             if s.cwd.isEmpty {
                 let tail = String(s.sid.prefix(4))
                 return base.isEmpty ? tail : "\(base)-\(tail)"
@@ -317,7 +350,7 @@ final class PetModel: ObservableObject {
     }
 
     var accessLabel: String {
-        let list = displaySessions
+        let list = sortedSessions
         if list.isEmpty { return "sleeping" }
         return list.prefix(6).map { "\(sessionTag($0)) session: \($0.mood)" }.joined(separator: ", ")
     }

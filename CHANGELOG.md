@@ -4,6 +4,19 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+- Finds sessions that were already open: recent transcripts in `~/.claude/projects/` show up without waiting for a hook. Setup step 3 completes as soon as one is found.
+- **Hide sessions untouched for** 30m / 1h / 3h / 8h / 1d (default 3h). The Sessions list is sorted by most recent and shows when each was last active.
+- **One Wigglet** mode: one character for every session, with a hover card that lists them all.
+- Chat providers: Claude Code (default, no key), Anthropic, OpenAI, OpenRouter, Gemini and Ollama, each with its own Keychain item and an editable model id.
+- A new chat bar: provider chip with a menu, the session it's about, the conversation so far, multi-line input and key hints.
+
+### Security
+- Chat runs `claude` with an argument array instead of a shell string, with no tools and no MCP servers.
+- Session ids are validated before they become file names; terminal device names are validated before AppleScript; the hook command quotes the app path.
+- Wigglet's own chat no longer shows up as a session.
+- CI actions pinned to commit SHAs; Dependabot for GitHub Actions; CODEOWNERS.
+
 ### Changed
 - Renamed to **Wigglet** (app, bundle id `dev.wigglet.app`, state folder `~/.claude/wigglet/`). Connecting replaces hooks left by the earlier Clawd Pet builds.
 - Wigglet is now a full app with a Dock icon and a main window: Home (setup with live checks), Sessions (with Jump), Animations (browse and play every clip), Settings and About.

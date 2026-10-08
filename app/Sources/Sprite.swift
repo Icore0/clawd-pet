@@ -609,12 +609,13 @@ struct Renderer {
             draw(&c, size: size, now: now, anchorX: anchor, sleeping: true)
             return
         }
-        let accentOn = m.sessions.count >= 2
+        let accentOn = m.displaySessions.count >= 2
         for (i, s) in list.prefix(6).enumerated() {
             var g = c
             g.translateBy(x: CGFloat(Double(i) * stride), y: 0)
             draw(&g, size: size, now: now, mood: s.mood, kind: s.kind, say: s.say, project: s.project, delta: s.delta, accent: accentOn ? sessionAccent(s.project) : nil, anchorX: anchor, session: s)
-            drawNameTag(&g, m.sessionTag(s), cx: anchor, size: size)
+            let tag = m.oneWigglet && m.sessions.count > 1 ? "\(m.sessions.count) sessions" : m.sessionTag(s)
+            drawNameTag(&g, tag, cx: anchor, size: size)
         }
         let extra = list.count - 6
         if extra > 0 {
@@ -1300,7 +1301,7 @@ struct PetView: View {
             if model.demo.isEmpty { r.drawTeam(&ctx, size: size, now: now) }
             else { r.draw(&ctx, size: size, now: now) }
         }
-        .frame(width: CGFloat(teamPanelWidth(count: model.sessions.count, scale: model.scale)), height: canvasH)
+        .frame(width: CGFloat(teamPanelWidth(count: model.displaySessions.count, scale: model.scale)), height: canvasH)
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.demo.isEmpty ? model.accessLabel : model.demo[Int(clock.now.timeIntervalSinceReferenceDate / 4) % model.demo.count])

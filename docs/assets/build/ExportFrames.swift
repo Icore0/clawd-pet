@@ -154,5 +154,6 @@ final class AppDelegate {
     func rebuildMenu() {}
     func resetPosition() {}
     func toggleLogin() {}
+    func showMain(_ pane: AppState.Pane?) {}
 }
 let canvasH: CGFloat = 280

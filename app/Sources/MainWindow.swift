@@ -21,7 +21,8 @@ final class AppState: ObservableObject {
     @Published var connected = HookInstaller.isInstalled
     @Published var connectError = ""
     @Published var keyDraft = ""
-    @Published var keySaved = KeychainStore.load() != nil
+    @Published var modelDraft = ""
+    @Published var provider = Provider.current
     @Published var preview = "breathe"
     weak var delegate: AppDelegate?
 
@@ -231,10 +232,10 @@ struct HomePane: View {
             if !state.connectError.isEmpty {
                 Text(state.connectError).font(W.sans(12)).foregroundStyle(W.clay).padding(.vertical, 8)
             }
-            WRow(number: "03", title: "Start a Claude Code session",
-                 detail: model.sessions.first.map { "Found \(model.sessionTag($0)) in \(hostLabel($0)). Its Wigglet is on your desktop." }
-                    ?? (state.connected ? "Waiting for one. Start a session in the Claude app, a terminal, VS Code or Cursor."
-                                        : "After connecting, start a new session. Sessions already running appear after their next tool call.")) {
+            WRow(number: "03", title: "Find your sessions",
+                 detail: model.sessions.isEmpty
+                    ? "Looking for sessions you've used in the last \(HideAfter.options.first { $0.0 == HideAfter.minutes }?.1 ?? "3h"). Open one in the Claude app, a terminal, VS Code or Cursor."
+                    : (model.sessions.count == 1 ? "Found \(model.sessionTag(model.sessions[0])) in \(hostLabel(model.sessions[0]))." : "Found \(model.sessions.count) sessions, including ones that were already open.")) {
                 HStack(spacing: 10) {
                     if !model.sessions.isEmpty {
                         Button("Open sessions") { state.pane = .sessions }.buttonStyle(WButton(kind: .line, small: true))
@@ -292,7 +293,7 @@ struct SessionsPane: View {
                 }
                 .padding(.vertical, 30)
             } else {
-                ForEach(model.displaySessions) { s in
+                ForEach(model.sessions.sorted { ($0.mood == "waiting" ? 1 : 0, $0.ts) > ($1.mood == "waiting" ? 1 : 0, $1.ts) }) { s in
                     let st = status(s.mood)
                     VStack(spacing: 0) {
                         HStack(spacing: 18) {
@@ -310,7 +311,7 @@ struct SessionsPane: View {
                             Spacer(minLength: 10)
                             VStack(alignment: .trailing, spacing: 5) {
                                 MonoLabel(text: hostLabel(s), color: W.ink2, size: 10.5)
-                                MonoLabel(text: s.toolCount == 1 ? "1 tool" : "\(s.toolCount) tools", color: W.ink4, size: 10)
+                                MonoLabel(text: activeAgo(s.ts), color: W.ink4, size: 10)
                             }
                             Button("Jump ↗") { state.delegate?.jump(s) }.buttonStyle(WButton(kind: .line, small: true))
                                 .help(s.hostApp.isEmpty ? "Jump to this session" : "Jump to \(Jump.hostName(s))")
@@ -409,6 +410,12 @@ struct SettingsPane: View {
             WRow(title: "Latest message in hover card", detail: "Read from the local transcript, shown only, never stored or sent.") {
                 SquareToggle(isOn: Binding(get: { model.showLatest }, set: { model.showLatest = $0; state.objectWillChange.send(); state.delegate?.rebuildMenu() }), label: "Latest message")
             }
+            WRow(title: "One Wigglet", detail: "One character for every session. It shows whichever needs you; hover it to see them all.") {
+                SquareToggle(isOn: Binding(get: { model.oneWigglet }, set: { model.oneWigglet = $0; model.objectWillChange.send(); state.objectWillChange.send() }), label: "One Wigglet")
+            }
+            WRow(title: "Hide sessions untouched for", detail: "Sessions you haven't worked in for this long leave the team. They come back when you use them.") {
+                Segmented(options: HideAfter.options, selection: Binding(get: { HideAfter.minutes }, set: { HideAfter.minutes = $0; model.discovery.invalidate(); state.objectWillChange.send() }))
+            }
             WRow(title: "Position", detail: "Put the team back in the bottom-right corner.") {
                 Button("Reset") { state.delegate?.resetPosition() }.buttonStyle(WButton(kind: .line, small: true))
             }
@@ -421,30 +428,53 @@ struct SettingsPane: View {
 
             group("Chat")
             Hairline(strong: true)
-            WRow(title: "OpenRouter key", detail: state.keySaved ? "Saved in the macOS Keychain." : "Paste a key to chat without using your Claude plan.") {
-                HStack(spacing: 8) {
-                    SecureField("sk-or-…", text: Binding(get: { state.keyDraft }, set: { state.keyDraft = $0 }))
-                        .textFieldStyle(.plain).font(W.mono(12)).foregroundStyle(W.ink)
-                        .padding(.horizontal, 10).frame(width: 200, height: 28)
-                        .background(W.raised).overlay(Rectangle().stroke(W.line, lineWidth: 1))
-                    Button("Save") {
-                        let typed = state.keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !typed.isEmpty && KeychainStore.save(typed) { state.keyDraft = ""; state.keySaved = true }
-                    }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.keyDraft.isEmpty)
-                    if state.keySaved { Button("Remove") { KeychainStore.delete(); state.keySaved = false }.buttonStyle(WButton(kind: .line, small: true)) }
+            WRow(title: "Who answers", detail: state.provider.detail) {
+                Menu {
+                    ForEach(Provider.allCases) { p in
+                        Button(p.label) { Provider.current = p; state.provider = p; state.keyDraft = ""; state.modelDraft = "" }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(state.provider.label.uppercased()).font(W.mono(11, .semibold)).tracking(0.5).foregroundStyle(W.ink)
+                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(W.ink3)
+                    }
+                    .padding(.horizontal, 11).frame(height: 28).overlay(Rectangle().stroke(W.line, lineWidth: 1))
+                }
+                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            }
+            if state.provider.needsKey {
+                let saved = KeychainStore.load(state.provider) != nil
+                WRow(title: "\(state.provider.label) key", detail: saved ? "Saved in the macOS Keychain, on this Mac only." : "Stored in the macOS Keychain. Sent only to \(state.provider.label).") {
+                    HStack(spacing: 8) {
+                        SecureField(state.provider.keyHint, text: $state.keyDraft)
+                            .textFieldStyle(.plain).font(W.mono(12)).foregroundStyle(W.ink)
+                            .padding(.horizontal, 10).frame(width: 200, height: 28)
+                            .background(W.raised).overlay(Rectangle().stroke(W.line, lineWidth: 1))
+                        Button("Save") {
+                            let typed = state.keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !typed.isEmpty && KeychainStore.save(typed, for: state.provider) { state.keyDraft = ""; state.objectWillChange.send() }
+                        }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.keyDraft.isEmpty)
+                        if saved { Button("Remove") { KeychainStore.delete(state.provider); state.objectWillChange.send() }.buttonStyle(WButton(kind: .line, small: true)) }
+                    }
                 }
             }
-            WRow(title: "Model", detail: "Used for chat over OpenRouter.") {
-                Segmented(options: orModels.map { ($0.id, $0.label.replacingOccurrences(of: "Claude ", with: "")) },
-                          selection: Binding(get: { state.delegate?.chat.model ?? orModels[0].id }, set: { state.delegate?.chat.model = $0; state.objectWillChange.send() }))
-            }
-            WRow(title: "Use Claude Code CLI instead", detail: "Runs claude -p locally. This counts toward your Claude plan.") {
-                SquareToggle(isOn: Binding(get: { state.delegate?.chat.useCLI ?? false }, set: { v in
-                    state.delegate?.chat.useCLI = v; UserDefaults.standard.set(v, forKey: "useClaudeCLI"); state.objectWillChange.send()
-                }), label: "Use Claude Code CLI")
+            if state.provider != .claude {
+                WRow(title: "Model", detail: "Any model id \(state.provider.label) accepts. Empty means \(state.provider.defaultModel).") {
+                    TextField(state.provider.model, text: Binding(get: { state.modelDraft.isEmpty ? state.provider.model : state.modelDraft },
+                                                                  set: { state.modelDraft = $0; state.provider.model = $0 }))
+                        .textFieldStyle(.plain).font(W.mono(12)).foregroundStyle(W.ink)
+                        .padding(.horizontal, 10).frame(width: 260, height: 28)
+                        .background(W.raised).overlay(Rectangle().stroke(W.line, lineWidth: 1))
+                }
             }
         }
     }
+}
+
+func activeAgo(_ ts: Double) -> String {
+    let m = Int((Date().timeIntervalSince1970 * 1000 - ts) / 60_000)
+    if m < 1 { return "active now" }
+    return m < 60 ? "active \(m)m ago" : "active \(m / 60)h ago"
 }
 
 // MARK: About

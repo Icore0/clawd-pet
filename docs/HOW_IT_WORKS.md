@@ -64,6 +64,8 @@ The full table, with triggers and timings, is in [ANIMATIONS.md](ANIMATIONS.md).
 
 ## 5. The team panel
 
+Sessions come from two places: the hook files, and recently changed transcripts in `~/.claude/projects/` (so sessions that were open before you connected show up straight away; a hook file wins when both exist). Sessions untouched for longer than **Hide sessions untouched for** (default 3 hours) are left out. With **One Wigglet** on, a single character stands in for all of them: the one waiting on you, else the busiest, else the latest, and its hover card lists every session with its own Jump.
+
 Sessions waiting on you are listed first. Up to six Wigglets are drawn side by side, and any more show as a `+N` badge. With two or more sessions, each Wigglet wears a scarf whose colour comes from its project name. The menu-bar icon shows the number of waiting sessions.
 
 ## 6. Hover card and Jump

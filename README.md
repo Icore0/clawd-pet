@@ -8,7 +8,7 @@
 
 <h1 align="center"><img src="docs/assets/icon.png" width="72" alt=""><br>Wigglet</h1>
 
-<p align="center"><b>One Wigglet for every Claude Code session.</b><br>A tiny pixel companion that floats on your Mac and shows what each session is doing.</p>
+<p align="center"><b>One Wigglet for every Claude Code session.</b><br>A tiny pixel companion that floats on your Mac and shows what each session is doing.<br><a href="https://wigglet.vercel.app">wigglet.vercel.app</a></p>
 
 <p align="center">
   <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-14110F?style=flat-square&logo=apple&logoColor=F6F1E7">
@@ -53,11 +53,11 @@ Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is g
 
 | | |
 |---|---|
-| **A team of Wigglets** | One per running session, six side by side, then a `+N` badge. Waiting sessions move to the front. |
+| **A team of Wigglets** | One per session you're working in, including ones already open before you connected. Six side by side, then a `+N` badge, or switch to **One Wigglet** for all of them. Sessions you haven't touched for a while (30 min to a day, your pick) step aside. |
 | **Live activity** | Each Wigglet shows what its session is doing: reading, editing, tests, builds, git, installs, web, sub-agents, plans or compaction. |
 | **80+ pixel animations** | Hand-timed 12 fps frames: a deploy rocket, a tea break on long commands, a check mark when tests pass, high-fives and pass-the-parcel between sessions. |
 | **Live hover card** | Hover over a Wigglet: project, turn timer, last actions and the session's latest message as it arrives. **Jump** takes you to that session's window. |
-| **Chat on your OpenRouter key** | Click a Wigglet or press <kbd>⌃⌥Space</kbd>. Your key is stored in the macOS Keychain. |
+| **Chat with Claude** | Click a Wigglet or press <kbd>⌃⌥Space</kbd>. Uses your Claude Code login by default, or your own Anthropic, OpenAI, OpenRouter or Gemini key, or a local Ollama model. Keys live in the macOS Keychain. |
 | **Private by default** | No accounts and no analytics. Nothing goes over the network unless you chat. |
 
 <p align="center"><img src="docs/assets/hover-card.png" width="400" alt="Hover card for the api session: working for 4:12, 23 tools, the latest message from Claude, a Jump button and the last four actions">
@@ -84,8 +84,8 @@ Claude Code runs `Wigglet --hook` on session and tool events. The hook updates o
 - **Stored:** tool names, file base names, the short description Claude writes for each command, the session's folder, which app it runs in (for Jump), and counters. Everything stays in `~/.claude/wigglet/sessions/`.
 - **Shown, never stored:** the hover card reads the session's latest message from its local transcript to display it. It's never written to a file or sent anywhere. Turn it off in the menu.
 - **Never stored:** file contents or full commands.
-- **Network:** only for chat. Without an OpenRouter key, chat runs your local `claude` CLI instead.
-- **Key:** stored in the macOS Keychain, never in a file.
+- **Network:** only for chat, and only to the provider you pick. The default runs your local `claude` CLI with no tools, so it can't read or change files.
+- **Keys:** stored in the macOS Keychain (this Mac only), never in a file.
 
 The full list is in [docs/PRIVACY.md](docs/PRIVACY.md).
 
@@ -116,7 +116,7 @@ HOME=/tmp/wigglet-test app/Wigglet.app/Contents/MacOS/Wigglet --frame-audit
 3. Optional cleanup:
    ```sh
    rm -rf ~/.claude/wigglet
-   security delete-generic-password -s dev.wigglet.app -a openrouter   # only if you added a key
+   for p in anthropic openai openrouter gemini; do security delete-generic-password -s dev.wigglet.app -a $p; done   # keys, if you added any
    defaults delete dev.wigglet.app
    ```
 
@@ -127,7 +127,7 @@ If you've already deleted the app, remove the hooks first with `Wigglet.app/Cont
 <summary><b>FAQ</b></summary>
 
 **Does it use my Claude usage?**
-The animations never do, because they come from local hook files. Chat with an OpenRouter key doesn't either. Without a key, or with **Use Claude Code CLI instead** checked in AI settings, chat runs `claude -p`, and that does count toward your plan.
+The animations never do, because they come from local files. Chat uses **Claude Code** by default, which runs `claude -p` and counts toward your plan (with tools off, so each message is small). To keep chat off your plan, pick Anthropic, OpenAI, OpenRouter or Gemini with your own key, or a local Ollama model, in **Settings → Chat**.
 
 **Does it work with the Claude desktop app?**
 Yes. Sessions in the desktop app's Code tab run the same hooks as the terminal, so they get a Wigglet too. Plain chats in the Claude app aren't Claude Code sessions, so they don't.

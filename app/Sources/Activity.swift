@@ -52,6 +52,8 @@ struct ActivityView: View {
                         Text(s.say.isEmpty ? model.sessionTag(s) : "\(model.sessionTag(s))  \(s.say)")
                             .font(.system(size: 12)).lineLimit(1).truncationMode(.middle)
                     }
+                } else if model.oneWigglet && model.sessions.count > 1 {
+                    everyone
                 } else if let s = shown {
                     card(s)
                 } else {
@@ -64,6 +66,28 @@ struct ActivityView: View {
             content.wPanel()
         } else {
             content.wPanel()
+        }
+    }
+
+    /// One-Wigglet mode: every session in one list, each with its own Jump.
+    @ViewBuilder var everyone: some View {
+        MonoLabel(text: "\(model.sessions.count) sessions", color: W.clay, size: 10)
+        ForEach(model.sortedSessions) { s in
+            let waiting = s.mood == "waiting", working = s.mood == "working"
+            HStack(spacing: 8) {
+                Rectangle().fill(waiting ? W.clay : working ? W.ok : W.ink4).frame(width: 8, height: 8).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.sessionTag(s)).font(W.sans(13, .medium)).foregroundStyle(W.ink).lineLimit(1).truncationMode(.middle)
+                    Text(s.say.isEmpty ? "\(status(s.mood)) · \(ago(s.ts))" : s.say).font(.system(size: 11)).foregroundStyle(W.ink3).lineLimit(1)
+                }
+                .help(s.cwd)
+                Spacer(minLength: 6)
+                if !ActivityView.offscreen {
+                    Button("Jump ↗") { onJump(s) }.buttonStyle(WButton(kind: .line, small: true))
+                        .accessibilityLabel("Jump to \(model.sessionTag(s)) session")
+                }
+            }
+            .accessibilityElement(children: .contain)
         }
     }
 

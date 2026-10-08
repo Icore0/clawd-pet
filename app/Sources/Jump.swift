@@ -34,7 +34,7 @@ enum Jump {
             return Result(ok: false, note: "Couldn't find where this session runs")
         }
         let name = hostName(s)
-        if (id == terminal || id == iterm) && !s.tty.isEmpty {
+        if (id == terminal || id == iterm) && isTTY(s.tty) {
             if selectTab(app: id, tty: s.tty) { return Result(ok: true, note: "") }
             running?.activate()
             return Result(ok: false, note: "Brought \(name) forward; couldn't pick the tab")
@@ -65,9 +65,13 @@ enum Jump {
         return c.url
     }
 
+    /// Only a real terminal device name ever reaches AppleScript source.
+    static func isTTY(_ t: String) -> Bool { t.range(of: #"^/dev/ttys[0-9]{1,4}$"#, options: .regularExpression) != nil }
+
     /// AppleScript selects the window and tab whose tty matches. Runs in-process; macOS asks for Automation access once.
     static func selectTab(app: String, tty: String) -> Bool {
-        let safe = tty.replacingOccurrences(of: "\"", with: "")
+        guard isTTY(tty) else { return false }
+        let safe = tty
         let src: String
         if app == terminal {
             src = """

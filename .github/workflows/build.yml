@@ -11,8 +11,12 @@ permissions:
 jobs:
   build:
     runs-on: macos-26   # the app uses glassEffect, which needs the macOS 26 SDK
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      # Actions are pinned to full commit SHAs; Dependabot proposes updates.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Build universal app
         run: cd app && ./build.sh
@@ -35,7 +39,7 @@ jobs:
       - name: Zip
         run: ditto -c -k --keepParent app/Wigglet.app Wigglet.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: Wigglet-${{ github.sha }}
           path: Wigglet.zip

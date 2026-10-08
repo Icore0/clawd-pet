@@ -18,7 +18,7 @@ enum ChatStatus: String {
     case opening, listening, reading, thinking, talking, offline, outOfCredits, rateLimited, unauthorized, timeout
 }
 
-struct ChatLine { var role: String; var text: String }
+struct ChatLine: Identifiable { let id = UUID(); var role: String; var text: String }
 
 final class ChatModel: ObservableObject {
     @Published var text = ""
@@ -27,12 +27,10 @@ final class ChatModel: ObservableObject {
     @Published var listening = false
     @Published var focusTick = 0
     @Published var placeBelow = false
-    @Published var keyNote = ""
     @Published var cost: Double = 0
     var status: ChatStatus = .opening
-    var lines: [ChatLine] = []
-    var model = orModels[0].id
-    var useCLI = UserDefaults.standard.bool(forKey: "useClaudeCLI")
+    @Published var lines: [ChatLine] = []
+    @Published var provider = Provider.current
     var sessionId: String?
     var onChange: () -> Void = {}
     var onReply: () -> Void = {}
@@ -76,7 +74,7 @@ final class ChatModel: ObservableObject {
         onChange()
     }
 
-    func status(for error: ORError) -> ChatStatus {
+    func status(for error: ChatError) -> ChatStatus {
         switch error {
         case .noKey, .badKey: return .unauthorized
         case .noCredits: return .outOfCredits
@@ -87,88 +85,90 @@ final class ChatModel: ObservableObject {
         }
     }
 
+    private func remember(_ answer: String) {
+        let a = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !a.isEmpty { lines.append(ChatLine(role: "assistant", text: a)) }
+        if lines.count > 20 { lines = Array(lines.suffix(20)) }
+    }
+
     func send() {
-        let msg = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
+        let msg = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !msg.isEmpty, !isBusy else { return }
-        text = ""; reply = ""; cost = 0; isBusy = true; setListening(false); onChange()
+        text = ""; reply = ""; cost = 0; isBusy = true; setListening(false)
         lines.append(ChatLine(role: "user", text: msg))
         if lines.count > 20 { lines = Array(lines.suffix(20)) }
-        setStatus(.reading)
-        if !useCLI, let key = KeychainStore.load(), !key.isEmpty {
-            setStatus(.thinking)
-            let messages = lines.suffix(20).map { ORMessage(role: $0.role, content: $0.text) }
-            OpenRouter.stream(messages: messages, model: model, key: key, onDelta: { [weak self] chunk in
-                guard let self else { return }
-                if self.status != .talking { self.setStatus(.talking) }
-                self.reply += chunk
-                self.onChange()
-            }, onCost: { [weak self] value in
-                self?.cost = value
-                self?.onChange()
-            }, onDone: { [weak self] result in
-                guard let self else { return }
-                switch result {
-                case .success:
-                    let answer = self.reply.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !answer.isEmpty {
-                        self.lines.append(ChatLine(role: "assistant", text: answer.replacingOccurrences(of: "\n", with: " ")))
-                        if self.lines.count > 20 { self.lines = Array(self.lines.suffix(20)) }
-                    }
-                    self.setStatus(.talking)
-                    self.onReply()
-                case .failure(let error):
-                    self.reply = error.message
-                    self.setStatus(self.status(for: error))
-                }
-                self.isBusy = false
-                self.onChange()
-            })
-            return
-        }
+        onChange()
         setStatus(.thinking)
-        let resume = sessionId.map { " --resume \($0)" } ?? ""
-        var sys = "You are \(PRODUCT_NAME), a tiny friendly desktop companion who lives on the user's screen. Answer briefly (1-4 sentences) unless asked for more. Plain text, no markdown headings."
+        let p = Provider.current
+        if p == .claude { return sendCLI(msg) }
+        let messages = [ChatMessage(role: "system", content: Self.persona)] + lines.map { ChatMessage(role: $0.role, content: $0.text) }
+        ChatAPI.stream(p, messages: messages, onDelta: { [weak self] chunk in
+            guard let self else { return }
+            if self.status != .talking { self.setStatus(.talking) }
+            self.reply += chunk
+            self.onChange()
+        }, onCost: { [weak self] value in
+            self?.cost = value
+            self?.onChange()
+        }, onDone: { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                self.remember(self.reply)
+                self.setStatus(.talking)
+                self.onReply()
+            case .failure(let error):
+                self.reply = error.message(p)
+                self.setStatus(self.status(for: error))
+            }
+            self.isBusy = false
+            self.onChange()
+        })
+    }
+
+    static let persona = "You are \(PRODUCT_NAME), a tiny friendly desktop companion who lives on the user's screen next to their Claude Code sessions. Answer briefly (1-4 sentences) unless asked for more. Plain text, no markdown headings."
+
+    /// "Just use Claude": runs the user's own `claude -p`. Arguments go in as an argv array, never through a shell.
+    private func sendCLI(_ msg: String) {
+        var sys = Self.persona
         let ctx = AppDelegate.shared.model.sessionContext
-        if !ctx.isEmpty {
-            let safe = ctx.replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "\"", with: "\\\"")
-                .replacingOccurrences(of: "$", with: "\\$")
-                .replacingOccurrences(of: "`", with: "\\`")
-            sys += "\n" + safe
-        }
-        let cmd = "claude -p --output-format json --max-turns 8 --append-system-prompt \"\(sys)\"\(resume)"
+        if !ctx.isEmpty { sys += "\nThe user is looking at this session: " + ctx }
+        let args = ChatAPI.claudeArgs(system: sys, resume: sessionId)
         DispatchQueue.global().async { [weak self] in
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            p.arguments = ["-lc", cmd]
-            p.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
-            let inPipe = Pipe(), outPipe = Pipe()
-            p.standardInput = inPipe; p.standardOutput = outPipe; p.standardError = Pipe()
-            var out = "", ok = true
-            do {
-                try p.run()
-                inPipe.fileHandleForWriting.write(Data(msg.utf8)); try? inPipe.fileHandleForWriting.close()
-                DispatchQueue.global().asyncAfter(deadline: .now() + 180) { if p.isRunning { p.terminate() } }
-                out = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                p.waitUntilExit()
-            } catch { ok = false }
-            var answer = "", sid: String?
+            var out = "", ok = false
+            if let exe = ChatAPI.claudePath() {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: exe)
+                p.arguments = args
+                p.currentDirectoryURL = URL(fileURLWithPath: homeDir)
+                var env = ProcessInfo.processInfo.environment
+                env["WIGGLET_CHAT"] = "1"
+                p.environment = env
+                let inPipe = Pipe(), outPipe = Pipe()
+                p.standardInput = inPipe; p.standardOutput = outPipe; p.standardError = Pipe()
+                if (try? p.run()) != nil {
+                    ok = true
+                    inPipe.fileHandleForWriting.write(Data(msg.utf8)); try? inPipe.fileHandleForWriting.close()
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 180) { if p.isRunning { p.terminate() } }
+                    out = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                    p.waitUntilExit()
+                }
+            }
+            var answer = "", sid: String?, failed = false
             if let d = out.data(using: .utf8), let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
                 answer = (o["result"] as? String) ?? ""; sid = o["session_id"] as? String
+                failed = (o["is_error"] as? Bool) == true
             }
             if answer.isEmpty {
-                answer = ok && !out.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !out.hasPrefix("{")
-                    ? out : "I couldn't reach Claude Code. Is `claude` installed and logged in? (npm i -g @anthropic-ai/claude-code, then run `claude` once.)"
+                failed = true
+                answer = ok ? "Claude didn't answer. Run `claude` once in a terminal to log in."
+                            : "Couldn't find the claude command. Install Claude Code (claude.com/claude-code), or pick another provider in Settings → Chat."
             }
             DispatchQueue.main.async {
                 guard let self else { return }
-                if let sid { self.sessionId = sid }
+                if let sid, isSafeSid(sid) { self.sessionId = sid }
                 self.reply = answer.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !self.reply.isEmpty {
-                    self.lines.append(ChatLine(role: "assistant", text: self.reply.replacingOccurrences(of: "\n", with: " ")))
-                    if self.lines.count > 20 { self.lines = Array(self.lines.suffix(20)) }
-                }
-                self.setStatus(.talking)
+                if failed { self.setStatus(.offline) } else { self.remember(self.reply); self.setStatus(.talking) }
                 self.isBusy = false; self.onChange(); self.onReply()
             }
         }
@@ -194,83 +194,160 @@ final class ChatModel: ObservableObject {
 struct ChatView: View {
     @ObservedObject var chat: ChatModel
     @FocusState private var focused: Bool
-    static let width: CGFloat = 400
+    static let width: CGFloat = 420
 
-    var replyHeight: CGFloat {
-        let h = (chat.reply as NSString).boundingRect(with: NSSize(width: Self.width - 56, height: .greatestFiniteMagnitude),
-                                                      options: .usesLineFragmentOrigin, attributes: [.font: NSFont.systemFont(ofSize: 13)]).height
-        return min(240, max(22, ceil(h) + 4))
+    var history: [ChatLine] { chat.lines.filter { $0.role != "system" }.suffix(8) }
+    var showsLog: Bool { !history.isEmpty || chat.isBusy || !chat.reply.isEmpty }
+    var sessionTag: String? {
+        let pet = AppDelegate.shared.model
+        return pet.sessions.first { $0.sid == pet.chatSid }.map { pet.sessionTag($0) }
+    }
+
+    func choose(_ p: Provider) {
+        Provider.current = p; chat.provider = p
+        chat.newChat()
+    }
+
+    /// Provider and model, the session the chat is about, and New.
+    var header: some View {
+        HStack(spacing: 8) {
+            Menu {
+                ForEach(Provider.allCases) { p in
+                    Button { choose(p) } label: {
+                        Text(p.hasKey ? p.label : "\(p.label) (add key in Settings)")
+                    }
+                }
+                Divider()
+                Button("Chat settings…") { AppDelegate.shared.showMain(.settings) }
+            } label: {
+                HStack(spacing: 5) {
+                    Rectangle().fill(chat.provider.hasKey ? W.ok : W.clay).frame(width: 6, height: 6)
+                    Text(chat.provider == .claude ? "CLAUDE CODE" : "\(chat.provider.label.uppercased()) · \(chat.provider.model)")
+                        .font(W.mono(10, .semibold)).tracking(0.4).foregroundStyle(W.ink2).lineLimit(1).truncationMode(.middle)
+                    Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold)).foregroundStyle(W.ink3)
+                }
+                .padding(.horizontal, 8).frame(height: 22)
+                .overlay(Rectangle().stroke(W.line, lineWidth: 1))
+            }
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            .help("Who answers. Change it here or in Settings → Chat.")
+            if let tag = sessionTag {
+                Text("↳ \(tag)").font(W.mono(10, .medium)).foregroundStyle(W.ink3).lineLimit(1).truncationMode(.middle)
+                    .help("The chat knows what this session is doing.")
+            }
+            Spacer(minLength: 4)
+            if chat.cost > 0 { Text(String(format: "$%.4f", chat.cost)).font(W.mono(10)).foregroundStyle(W.ink4) }
+            if !history.isEmpty {
+                Button("NEW") { chat.newChat() }.buttonStyle(.plain).font(W.mono(10, .semibold)).foregroundStyle(W.ink3)
+                    .keyboardShortcut("n", modifiers: .command).help("New chat (⌘N)")
+            }
+        }
+        .padding(.horizontal, 12).frame(height: 36)
+    }
+
+    func row(_ role: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(role == "user" ? "YOU" : "W").font(W.mono(9.5, .bold))
+                .foregroundStyle(role == "user" ? W.ink4 : W.clay).frame(width: 26, alignment: .leading)
+            Text(text).font(W.sans(13)).foregroundStyle(role == "user" ? W.ink2 : W.ink)
+                .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    var log: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(history) { l in row(l.role, l.text) }
+                    if chat.isBusy && chat.reply.isEmpty {
+                        HStack(spacing: 5) {
+                            Text("W").font(W.mono(9.5, .bold)).foregroundStyle(W.clay).frame(width: 26, alignment: .leading)
+                            ForEach(0..<3) { i in
+                                TimelineView(.animation) { tl in
+                                    Rectangle().fill(W.ink3).frame(width: 5, height: 5)
+                                        .offset(y: -3 * max(0, sin(tl.date.timeIntervalSinceReferenceDate * 6 - Double(i) * 0.8)))
+                                }
+                            }
+                        }
+                    } else if chat.isBusy || history.last?.role == "user" {
+                        // Streaming, or an error that never became part of the history.
+                        row("assistant", chat.reply)
+                    }
+                    Color.clear.frame(height: 1).id("end")
+                }
+                .padding(.horizontal, 12).padding(.vertical, 12)
+            }
+            .frame(height: logHeight)
+            .onChange(of: chat.reply) { _ in proxy.scrollTo("end", anchor: .bottom) }
+            .onChange(of: chat.lines.count) { _ in proxy.scrollTo("end", anchor: .bottom) }
+            .onAppear { proxy.scrollTo("end", anchor: .bottom) }
+        }
+    }
+
+    var logHeight: CGFloat {
+        let all = history.map(\.text) + [chat.reply]
+        let h = all.reduce(CGFloat(0)) { acc, t in
+            acc + (t as NSString).boundingRect(with: NSSize(width: Self.width - 70, height: .greatestFiniteMagnitude),
+                                               options: .usesLineFragmentOrigin, attributes: [.font: NSFont.systemFont(ofSize: 13)]).height + 10
+        }
+        return min(280, max(40, ceil(h) + 24))
     }
 
     var bar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "sparkle").font(.system(size: 14, weight: .semibold)).foregroundStyle(wiggletOrange)
-            TextField("Ask \(PRODUCT_NAME)…", text: $chat.text)
-                .textFieldStyle(.plain).font(.system(size: 14)).focused($focused)
+            Text(">").font(W.mono(15, .bold)).foregroundStyle(W.clay)
+            TextField("Ask \(PRODUCT_NAME)…", text: $chat.text, axis: .vertical)
+                .lineLimit(1...4)
+                .textFieldStyle(.plain).font(W.sans(14)).foregroundStyle(W.ink).focused($focused)
                 .onSubmit { chat.send() }
                 .onChange(of: chat.text) { _ in if chat.listening { chat.setListening(true) } }
             Button { chat.listening ? chat.setListening(false) : chat.startDictation() } label: {
                 Image(systemName: chat.listening ? "mic.fill" : "mic")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(chat.listening ? Color.red : Color.primary.opacity(0.75))
-                    .frame(width: 26, height: 26)
-                    .background(Rectangle().fill(chat.listening ? W.clay.opacity(0.22) : Color.clear))
-            }.buttonStyle(.plain).help("Dictate (uses macOS Dictation or your dictation app)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(chat.listening ? W.clay : W.ink3)
+                    .frame(width: 28, height: 28)
+                    .overlay(Rectangle().stroke(chat.listening ? W.clay : W.line, lineWidth: 1))
+            }.buttonStyle(.plain).help("Dictate").accessibilityLabel(chat.listening ? "Stop dictation" : "Dictate")
             Button { chat.send() } label: {
                 Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold))
                     .foregroundStyle(W.bg).frame(width: 28, height: 28)
                     .background(Rectangle().fill(chat.text.isEmpty || chat.isBusy ? W.ink4 : W.clay))
-            }.buttonStyle(.plain).disabled(chat.text.isEmpty || chat.isBusy)
+            }.buttonStyle(.plain).disabled(chat.text.isEmpty || chat.isBusy).accessibilityLabel("Send")
         }
-        .padding(.horizontal, 16).frame(width: Self.width, height: 48)
-        .wPanel()
-        .environment(\.colorScheme, .dark)
+        .padding(.horizontal, 12).padding(.vertical, 10)
     }
 
-    var card: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if chat.isBusy && chat.reply.isEmpty {
-                HStack(spacing: 5) {
-                    ForEach(0..<3) { i in
-                        TimelineView(.animation) { tl in
-                            Rectangle().fill(W.ink2).frame(width: 6, height: 6)
-                                .offset(y: -3 * max(0, sin(tl.date.timeIntervalSinceReferenceDate * 6 - Double(i) * 0.8)))
-                        }
-                    }
-                }.padding(.vertical, 6)
-            } else {
-                ScrollView { Text(chat.reply).font(.system(size: 13)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
-                    .frame(height: replyHeight)
-            }
-            HStack {
-                if chat.cost > 0 {
-                    Text(String(format: "$%.4f", chat.cost)).font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("New chat") { chat.newChat() }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
-                Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(chat.reply, forType: .string) }
-                    .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
-            }
+    var hints: some View {
+        HStack(spacing: 12) {
+            hint("↩", "send"); hint("⌥↩", "new line"); hint("esc", "close")
+            Spacer()
+            if chat.isBusy { MonoLabel(text: chat.status == .talking ? "answering" : "thinking", color: W.clay, size: 9.5) }
         }
-        .padding(.horizontal, 16).padding(.vertical, 10).frame(width: Self.width)
-        .wPanel()
-        .environment(\.colorScheme, .dark)
+        .padding(.horizontal, 12).padding(.bottom, 9)
+    }
+    func hint(_ k: String, _ what: String) -> some View {
+        HStack(spacing: 4) {
+            Text(k).font(W.mono(9.5, .semibold)).foregroundStyle(W.ink3)
+                .padding(.horizontal, 4).frame(height: 15).overlay(Rectangle().stroke(W.soft, lineWidth: 1))
+            Text(what.uppercased()).font(W.mono(9.5)).foregroundStyle(W.ink4)
+        }
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            if !chat.keyNote.isEmpty {
-                Text(chat.keyNote).font(.system(size: 11)).foregroundStyle(.secondary).frame(width: Self.width, alignment: .leading)
-            }
-            if chat.placeBelow {
-                bar; if chat.isBusy || !chat.reply.isEmpty { card }
-            } else {
-                if chat.isBusy || !chat.reply.isEmpty { card }; bar
-            }
+        VStack(spacing: 0) {
+            header
+            Hairline()
+            if showsLog { log; Hairline() }
+            bar
+            hints
         }
+        .frame(width: Self.width)
+        .wPanel(W.bg)
+        .environment(\.colorScheme, .dark)
         .padding(10).fixedSize()
-        .onAppear { focused = true }
-        .onChange(of: chat.focusTick) { _ in focused = true }
+        .onAppear { focused = true; chat.provider = Provider.current }
+        .onChange(of: chat.focusTick) { _ in focused = true; chat.provider = Provider.current }
         .onExitCommand { chat.onClose() }
     }
 }

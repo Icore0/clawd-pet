@@ -79,10 +79,13 @@ func findHost(from start: pid_t = getppid()) -> HostInfo {
 let hookEvents = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification", "Stop", "StopFailure", "SubagentStart", "SubagentStop", "PreCompact", "PostCompact", "PermissionDenied"]
 
 func runHookMode() -> Never {
+    // Wigglet's own `claude -p` chat runs hooks too; it isn't a session to show.
+    if ProcessInfo.processInfo.environment["WIGGLET_CHAT"] != nil { exit(0) }
     let data = FileHandle.standardInput.readDataToEndOfFile()
     guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { exit(0) }
     let ev = (o["hook_event_name"] as? String) ?? ""
     let sid = (o["session_id"] as? String) ?? "unknown"
+    guard isSafeSid(sid) else { exit(0) }
     let project = (((o["cwd"] as? String) ?? "") as NSString).lastPathComponent
     let input = (o["tool_input"] as? [String: Any]) ?? [:]
     func base(_ k: String) -> String { ((input[k] as? String) ?? "").split(separator: "/").last.map(String.init) ?? "" }
@@ -248,8 +251,10 @@ func runHookMode() -> Never {
 }
 
 enum HookInstaller {
-    static var command: String {
-        let exe = Bundle.main.executablePath ?? CommandLine.arguments[0]
+    static var command: String { commandFor(Bundle.main.executablePath ?? CommandLine.arguments[0]) }
+    static func commandFor(_ path: String) -> String {
+        // Single-quoted for sh; a quote inside the path becomes '\''.
+        let exe = path.replacingOccurrences(of: "'", with: "'\\''")
         return "[ -x '\(exe)' ] && '\(exe)' --hook; exit 0"
     }
     /// Ours, including hooks from the earlier names (Clawd Pet, Familiar), so connecting replaces them instead of stacking.
