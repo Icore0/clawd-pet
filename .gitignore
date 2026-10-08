@@ -14,3 +14,4 @@ mascot/alt-pipkin/
 *.key
 mascot/CLAWD-SPEC.md
 tools/extract_official_frames.swift
+OPUS_PROMPT*.md
