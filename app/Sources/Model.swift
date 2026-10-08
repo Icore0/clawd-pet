@@ -30,6 +30,11 @@ struct SessionPet: Identifiable {
     var lastDurationMs: Double = 0
     var toolStartedAt: Double?
     var toolTimes: [Double] = []
+    /// Where the session runs (recorded by the hook at SessionStart), for "Jump to session".
+    var hostBundleId = ""
+    var hostPid: Int32 = 0
+    var hostApp = ""
+    var tty = ""
     /// Last time this session was working, waiting, hello, bye, done, or oops. A newer file `ts` moves it to now.
     var lastNonIdle: Date = .distantPast
     var events: [Ev] = []
@@ -55,6 +60,15 @@ final class PetModel: ObservableObject {
     var project = ""
     var sessions: [SessionPet] = []
     var hoveredSid: String?
+    /// The session the hover card shows. Survives the pointer moving from the Clawd onto the card.
+    var cardSid: String?
+    var cardHover = false
+    var cardExpanded = false
+    var toast = ""
+    var showLatest: Bool {
+        get { UserDefaults.standard.object(forKey: "cardLatest") == nil ? true : UserDefaults.standard.bool(forKey: "cardLatest") }
+        set { UserDefaults.standard.set(newValue, forKey: "cardLatest") }
+    }
     var badgeHover = false
     var selectedSid: String?
     var sessionContext = ""
@@ -108,6 +122,16 @@ final class PetModel: ObservableObject {
     var conflictFile = ""
     var demo: [String] = []     // --demo: cycle through behaviours
     var ambient = AmbientMemory()
+    /// One ambient memory per character, so idle clips play to the end and two Clawds don't share a roll.
+    var ambientBy: [String: AmbientMemory] = [:]
+    func ambientMemory(_ sid: String) -> AmbientMemory {
+        if let m = ambientBy[sid] { return m }
+        let m = AmbientMemory(); ambientBy[sid] = m; return m
+    }
+    /// Current clip and when it started, per character slot. Read by the renderer only.
+    var clipTrack: [String: (name: String, start: Date)] = [:]
+    /// Last drawn pose and its 12 fps frame number, per character slot (connector frames).
+    var trail: [String: (pose: Pose, frame: Int)] = [:]
     var commitDay = ""
     var confettiUntil = Date.distantPast
     var sawTool100 = false
@@ -178,6 +202,10 @@ final class PetModel: ObservableObject {
                 lastDurationMs: (o["lastDurationMs"] as? NSNumber)?.doubleValue ?? 0,
                 toolStartedAt: (o["toolStartedAt"] as? NSNumber)?.doubleValue,
                 toolTimes: toolTimes,
+                hostBundleId: (o["hostBundleId"] as? String) ?? "",
+                hostPid: (o["hostPid"] as? NSNumber)?.int32Value ?? 0,
+                hostApp: (o["hostApp"] as? String) ?? "",
+                tty: (o["tty"] as? String) ?? "",
                 lastNonIdle: lastNonIdle)
         }
         var next: [SessionPet] = []
@@ -294,9 +322,17 @@ final class PetModel: ObservableObject {
         return list.prefix(6).map { "\(sessionTag($0)) session: \($0.mood)" }.joined(separator: ", ")
     }
 
+    /// Cheap fingerprint of what the panel draws from the session files.
+    private var lastSignature = ""
+    private var signature: String {
+        sessions.map { "\($0.sid)|\($0.ts)|\($0.mood)|\($0.kind.rawValue)|\($0.say)|\($0.subagentCount)" }.joined(separator: ";")
+    }
+
     func poll() {
-        objectWillChange.send()
         loadSessions()
+        // Redraw only when the files changed; the frame clock drives animation on its own.
+        let sig = signature + "|\(leanSid ?? "")|\(hoveredSid ?? "")"
+        if sig != lastSignature { lastSignature = sig; objectWillChange.send() }
         var sounds: [String] = []
         if moodsReady {
             for s in sessions where lastMood[s.sid] != s.mood && (s.mood == "waiting" || s.mood == "done") {

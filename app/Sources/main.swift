@@ -7,10 +7,28 @@ if CommandLine.arguments.contains("--dump-catalog") {
     print(AnimationCatalog.markdown())
     exit(0)
 }
+if CommandLine.arguments.contains("--frame-audit") {
+    exit(runFrameAudit())
+}
 if CommandLine.arguments.contains("--pixel-audit") {
     exit(runPixelAudit())
 }
 if CommandLine.arguments.contains("--hook") { runHookMode() }
+// Prints where the calling shell's session would be recorded as running (same walk the hook does).
+if CommandLine.arguments.contains("--host-probe") {
+    let h = findHost()
+    print("bundle=\(h.bundleId) pid=\(h.pid) tty=\(h.tty) app=\((h.appPath as NSString).lastPathComponent)")
+    exit(0)
+}
+// `--jump <sid>`: runs "Jump to session" for one session file and prints the outcome (testing).
+if let i = CommandLine.arguments.firstIndex(of: "--jump"), i + 1 < CommandLine.arguments.count {
+    let model = PetModel()
+    model.loadSessions()
+    guard let s = model.sessions.first(where: { $0.sid == CommandLine.arguments[i + 1] }) else { print("no such session"); exit(1) }
+    let r = Jump.go(s)
+    print(r.ok ? "PASS exact" : "PARTIAL \(r.note)")
+    exit(0)
+}
 if CommandLine.arguments.contains("--install-hooks") { do { try HookInstaller.install(); print("hooks installed in \(settingsPath)") } catch { print(error.localizedDescription); exit(1) }; exit(0) }
 if CommandLine.arguments.contains("--remove-hooks") { do { try HookInstaller.remove(); print("hooks removed") } catch { print(error.localizedDescription); exit(1) }; exit(0) }
 let teamDemoFlag = CommandLine.arguments.contains("--team-demo")
@@ -52,6 +70,10 @@ if CommandLine.arguments.contains("--selftest") {
         print(problem)
         exit(1)
     }
+    if let problem = TranscriptReader.selfCheck() {
+        print(problem)
+        exit(1)
+    }
     let fm = FileManager.default
     try? fm.createDirectory(atPath: sessionsDir, withIntermediateDirectories: true)
     if let files = try? fm.contentsOfDirectory(atPath: sessionsDir) {
@@ -90,6 +112,11 @@ if CommandLine.arguments.contains("--selftest") {
 let canvasH: CGFloat = 280
 
 final class ChatPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+/// The hover card panel: becomes key when clicked, so Tab, Return and Esc work without activating the app on hover.
+final class CardPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
@@ -164,6 +191,7 @@ final class DragView: NSView {
         guard i < list.count else { return }
         let s = list[i]
         model.hoveredSid = s.sid
+        model.cardSid = s.sid
         model.hoverBegan = Date()
         model.hover = true
         toolTip = s.cwd.isEmpty ? model.sessionTag(s) : s.cwd
@@ -332,8 +360,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var item: NSStatusItem!
     var glider: Glider!
     var hotKey: EventHotKeyRef?
-    var activityPanel: NSPanel!
+    var activityPanel: CardPanel!
     var activityHost: NSHostingView<ActivityView>!
+    let watcher = TranscriptWatcher()
+    var toastPanel: NSPanel!
+    var toastHost: NSHostingView<ToastView>!
+    var cardGraceUntil = Date.distantPast
     var hoverWork: DispatchWorkItem?
     var soundsOn: Bool { get { UserDefaults.standard.bool(forKey: "sounds") } set { UserDefaults.standard.set(newValue, forKey: "sounds") } }
 
@@ -372,12 +404,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         clock.start(model)
 
         // hover activity card
-        activityPanel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 320, height: 200), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        activityPanel = CardPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 200), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         activityPanel.isOpaque = false; activityPanel.backgroundColor = .clear; activityPanel.hasShadow = false
-        activityPanel.level = .floating; activityPanel.ignoresMouseEvents = true; activityPanel.hidesOnDeactivate = false
+        activityPanel.level = .floating; activityPanel.ignoresMouseEvents = false; activityPanel.hidesOnDeactivate = false
         activityPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        activityHost = NSHostingView(rootView: ActivityView(model: model))
+        activityHost = NSHostingView(rootView: ActivityView(model: model, watcher: watcher,
+                                                            onJump: { [weak self] s in self?.jump(s) },
+                                                            onClose: { [weak self] in self?.hideCard() }))
         activityPanel.contentView = activityHost
+        toastPanel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 300, height: 40), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        toastPanel.isOpaque = false; toastPanel.backgroundColor = .clear; toastPanel.hasShadow = false
+        toastPanel.level = .floating; toastPanel.ignoresMouseEvents = true
+        toastPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        toastHost = NSHostingView(rootView: ToastView(model: model))
+        toastPanel.contentView = toastHost
 
         // chat bar
         chatPanel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 80), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -425,6 +465,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.item.button?.title = waiting > 0 ? "\(waiting)" : "✺"
             self.fitPanel()
             self.positionActivity()
+            // Close the card once the pointer has left both the Clawd and the card (after a short grace).
+            if self.activityPanel.isVisible && !self.model.hover && !self.model.cardHover && Date() > self.cardGraceUntil
+                && !self.activityPanel.isKeyWindow {
+                self.hideCard()
+            }
         }
 
         if !UserDefaults.standard.bool(forKey: "askedConnect") && !HookInstaller.isInstalled {
@@ -487,11 +532,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if on {
             let w = DispatchWorkItem { [weak self] in self?.showActivity() }
             hoverWork = w; DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: w)
-        } else { activityPanel.orderOut(nil) }
+        } else {
+            // Leave time to travel from the Clawd onto the card.
+            cardGraceUntil = Date().addingTimeInterval(0.45)
+            if model.isDragging { hideCard() }
+        }
     }
     func showActivity() {
         guard !model.chatOpen, !model.isDragging, !model.isGliding, model.hover else { return }
+        if let s = model.sessions.first(where: { $0.sid == model.cardSid }), model.showLatest { watcher.watch(s.transcript) } else { watcher.stop() }
         positionActivity(); activityPanel.orderFrontRegardless()
+    }
+    func hideCard() {
+        activityPanel.orderOut(nil)
+        watcher.stop()
+        model.cardHover = false
+    }
+    func jump(_ s: SessionPet) {
+        if Jump.needsAutomation(s) && !UserDefaults.standard.bool(forKey: "explainedAutomation") {
+            UserDefaults.standard.set(true, forKey: "explainedAutomation")
+            let a = NSAlert()
+            a.messageText = "Let \(PRODUCT_NAME) pick the right tab?"
+            a.informativeText = "To jump to the exact \(Jump.hostName(s)) tab, macOS will ask once whether \(PRODUCT_NAME) may control \(Jump.hostName(s)). It only selects the tab whose terminal matches this session. If you say no, it still brings the app forward."
+            a.addButton(withTitle: "Continue")
+            NSApp.activate(ignoringOtherApps: true)
+            a.runModal()
+        }
+        let r = Jump.go(s)
+        hideCard()
+        if !r.note.isEmpty { showToast(r.note) }
+    }
+    func showToast(_ text: String) {
+        model.toast = text
+        model.objectWillChange.send()
+        toastHost.layoutSubtreeIfNeeded()
+        let size = toastHost.fittingSize
+        toastPanel.setContentSize(size)
+        let f = panel.frame, u = CGFloat(model.scale)
+        toastPanel.setFrameOrigin(NSPoint(x: f.midX - size.width / 2, y: f.minY + 14 + 9 * u))
+        toastPanel.orderFrontRegardless()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in
+            if self?.model.toast == text { self?.toastPanel.orderOut(nil) }
+        }
     }
     func positionActivity() {
         guard activityPanel != nil, activityPanel.isVisible else { return }
@@ -501,9 +583,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let u = CGFloat(model.scale), f = panel.frame
         let sc = NSScreen.screens.first { $0.frame.intersects(f) } ?? NSScreen.main ?? NSScreen.screens[0]
         let vf = sc.visibleFrame
-        var x = f.midX - 6.5 * u - size.width - 2
-        if x < vf.minX + 4 { x = f.midX + 6.5 * u + 2 }
-        let y = min(max(vf.minY + 4, f.minY + 10), vf.maxY - size.height - 4)
+        // Beside the team, never over a Clawd: left of the first slot, else right of the last.
+        let team = CGFloat(teamPanelWidth(count: model.sessions.count, scale: model.scale))
+        var x = f.minX + 8 - size.width
+        if x < vf.minX + 4 { x = f.minX + team - 8 }
+        x = min(x, vf.maxX - size.width - 4)
+        let y = min(max(vf.minY + 4, f.minY + 4), vf.maxY - size.height - 4)
+        _ = u
         activityPanel.setFrameOrigin(NSPoint(x: x, y: y))
     }
     func toggleChat() { chatPanel.isVisible ? closeChat() : openChat() }
@@ -546,6 +632,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = add("Disconnect and remove hooks", #selector(disconnectAction))
         _ = add("AI settings", #selector(aiSettings))
         _ = add("Play sounds", #selector(toggleSounds), on: soundsOn)
+        _ = add("Show latest message in hover card", #selector(toggleLatest), on: model.showLatest)
         let size = NSMenu()
         for (name, v) in [("Small", 7.0), ("Medium", 10.0), ("Large", 14.0)] {
             let i = NSMenuItem(title: name, action: #selector(setScale(_:)), keyEquivalent: ""); i.target = self; i.tag = Int(v)
@@ -563,6 +650,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func menuChat() { openChat() }
     @objc func resetAction() { resetPosition() }
     @objc func toggleSounds() { soundsOn.toggle(); item.menu = buildMenu() }
+    @objc func toggleLatest() { model.showLatest.toggle(); if !model.showLatest { watcher.stop() }; item.menu = buildMenu() }
     @objc func setScale(_ s: NSMenuItem) {
         model.scale = Double(s.tag); UserDefaults.standard.set(model.scale, forKey: "scale"); item.menu = buildMenu()
         fitPanel(); positionChat()

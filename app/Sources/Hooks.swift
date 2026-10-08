@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 // Two jobs:
 //  1. `--hook`: called by Claude Code hooks, turns the event JSON on stdin into a per-session state file.
@@ -40,6 +40,42 @@ func activityName(tool: String, input: [String: Any], previousTool: String, tool
     }
     return ""
 }
+/// The GUI app hosting this Claude Code session, found by walking the process tree up from the hook.
+/// sysctl + proc_pidpath only: no subprocesses, so the hook stays fast.
+struct HostInfo { var bundleId = ""; var pid: Int32 = 0; var appPath = ""; var tty = "" }
+func findHost(from start: pid_t = getppid()) -> HostInfo {
+    var out = HostInfo()
+    var pid = start
+    for _ in 0..<24 {
+        guard pid > 1 else { break }
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { break }
+        let tdev = info.kp_eproc.e_tdev
+        let raw = UInt32(truncatingIfNeeded: tdev)   // NODEV is all ones
+        if out.tty.isEmpty && raw != UInt32.max && raw != 0, let name = devname(tdev, S_IFCHR) {
+            out.tty = "/dev/" + String(cString: name)
+        }
+        var buf = [CChar](repeating: 0, count: 4096)
+        if proc_pidpath(pid, &buf, UInt32(buf.count)) > 0 {
+            let path = String(cString: buf)
+            // Only a real GUI app counts as the host. The Claude Code CLI ships inside its own .app bundle,
+            // so the walk keeps climbing until macOS reports a regular, running app.
+            if let r = path.range(of: ".app/"), let running = NSRunningApplication(processIdentifier: pid),
+               running.activationPolicy == .regular {
+                let app = String(path[..<r.lowerBound]) + ".app"
+                out.bundleId = running.bundleIdentifier ?? ((NSDictionary(contentsOfFile: app + "/Contents/Info.plist")?["CFBundleIdentifier"] as? String) ?? "")
+                out.pid = pid
+                out.appPath = app
+                return out
+            }
+        }
+        pid = info.kp_eproc.e_ppid
+    }
+    return out
+}
+
 let hookEvents = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification", "Stop", "StopFailure", "SubagentStart", "SubagentStop", "PreCompact", "PostCompact", "PermissionDenied"]
 
 func runHookMode() -> Never {
@@ -53,7 +89,6 @@ func runHookMode() -> Never {
 
     let tool = (o["tool_name"] as? String) ?? ""
     var mood = "working", kind = "think", say = "", delta = ""
-    var raiseAlarm = false
     switch ev {
     case "SessionStart": mood = "hello"; kind = "hello"; say = ""
     case "SessionEnd": mood = "bye"; kind = "bye"; say = ""
@@ -61,11 +96,10 @@ func runHookMode() -> Never {
     case "PostToolUse", "PostToolUseFailure", "SubagentStop", "SubagentStart": break
     case "PreCompact", "PostCompact": kind = "compact"; say = "context"
     case "Stop": mood = "done"; kind = "none"; say = ""
-    case "StopFailure": raiseAlarm = true
+    case "StopFailure": mood = "oops"; kind = "none"; say = ""
     case "PermissionDenied": mood = "waiting"; kind = "ask"; say = ""
     case "Notification":
         let msg = ((o["message"] as? String) ?? "").lowercased()
-        if msg.contains("quota") { raiseAlarm = true }
         mood = "waiting"
         if msg.contains("permission") || msg.contains("approve") || msg.contains("allow") { kind = "ask"; say = msg.replacingOccurrences(of: "claude needs your permission to use ", with: "") }
         else { kind = "yourTurn"; say = "" }
@@ -131,9 +165,10 @@ func runHookMode() -> Never {
         toolStartedAt = NSNull()
         if let ms = (o["duration_ms"] as? NSNumber)?.doubleValue { lastDurationMs = ms }
     }
+    let prevKind = (prev["kind"] as? String) ?? ""
     if ev == "PostToolUse" {
         errorStreak = 0
-        activityId = ""
+        activityId = prevKind == "test" && tool == "Bash" ? "testPass" : ""
     }
     if ev == "PostToolUseFailure" {
         let interrupt = (o["is_interrupt"] as? Bool) ?? (o["is_interrupt"] as? NSNumber)?.boolValue ?? false
@@ -146,26 +181,18 @@ func runHookMode() -> Never {
         if err.contains("CONFLICT") || err.contains("Automatic merge failed") || stdout.contains("CONFLICT") || stdout.contains("Automatic merge failed") {
             activityId = "conflict"
         } else {
-            activityId = ""
+            activityId = prevKind == "test" && tool == "Bash" && !interrupt ? "testFail" : ""
         }
     }
     if ev == "SubagentStart" {
         subagentCount += 1
+        activityId = "handoff"
         if let m = prev["mood"] as? String { mood = m }
         if let k = prev["kind"] as? String { kind = k }
         if let s = prev["say"] as? String { say = s }
         if let d = prev["delta"] as? String { delta = d }
     }
     if ev == "SubagentStop" { subagentCount = max(0, subagentCount - 1) }
-    if raiseAlarm {
-        activityId = "alarm"
-        if ev == "StopFailure" {
-            if let m = prev["mood"] as? String { mood = m }
-            if let k = prev["kind"] as? String { kind = k }
-            if let s = prev["say"] as? String { say = s }
-            if let d = prev["delta"] as? String { delta = d }
-        }
-    }
     let prevMood = (prev["mood"] as? String) ?? ""
     let lastTool: String
     let toolCount: Int
@@ -182,7 +209,16 @@ func runHookMode() -> Never {
         else { turnStart = num("turnStart").map { $0 as Any } ?? NSNull() }
     } else { turnStart = NSNull() }
     try? FileManager.default.createDirectory(atPath: sessionsDir, withIntermediateDirectories: true)
-    let obj: [String: Any] = [
+    // Where this session lives, for "Jump to session". Recorded once (SessionStart, or the first event we see).
+    var host: [String: Any] = [:]
+    if let b = prev["hostBundleId"] as? String {
+        for k in ["hostBundleId", "hostPid", "hostApp", "tty"] { host[k] = prev[k] ?? NSNull() }
+        _ = b
+    } else {
+        let h = findHost()
+        host = ["hostBundleId": h.bundleId, "hostPid": Int(h.pid), "hostApp": h.appPath, "tty": h.tty]
+    }
+    var obj: [String: Any] = [
         "sid": sid,
         "cwd": (o["cwd"] as? String) ?? "",
         "project": project,
@@ -204,6 +240,7 @@ func runHookMode() -> Never {
         "delta": delta,
         "ts": now
     ]
+    for (k, v) in host { obj[k] = v }
     if let d = try? JSONSerialization.data(withJSONObject: obj) {
         try? d.write(to: URL(fileURLWithPath: path), options: .atomic)
     }

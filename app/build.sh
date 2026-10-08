@@ -33,6 +33,7 @@ cat > $A/Contents/Info.plist <<P
 <key>CFBundleVersion</key><string>1.0.0</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSUIElement</key><true/>
+<key>NSAppleEventsUsageDescription</key><string>Jump to session selects the Terminal or iTerm2 tab where that Claude Code session runs.</string>
 <key>NSMicrophoneUsageDescription</key><string>$PRODUCT_NAME's mic button starts macOS Dictation so you can talk instead of type.</string>
 </dict></plist>
 P
