@@ -1,48 +1,141 @@
-# Clawd Pet
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.gif">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/hero-light.gif">
+    <img src="docs/assets/hero-dark.gif" width="720" alt="Three Clawds on three Claude Code sessions: one asking for your OK, one reading, one running tests">
+  </picture>
+</p>
 
-A small floating companion for [Claude Code](https://claude.com/product/claude-code) on macOS. One Clawd per running session, each reacting live to what that session is doing, with 60+ animations and a glass chat bar that runs on your own OpenRouter key.
+<h1 align="center">Clawd Pet</h1>
 
-Unofficial fan project. Not affiliated with or endorsed by Anthropic. "Claude" and the mascot belong to Anthropic.
+<p align="center"><b>One Clawd for every Claude Code session.</b><br>A tiny pixel companion that floats on your Mac and shows what each session is doing.</p>
 
-## What it does
+<p align="center">
+  <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-14110F?style=flat-square&logo=apple&logoColor=F6F1E7">
+  <img alt="Swift 5" src="https://img.shields.io/badge/Swift-5-D97757?style=flat-square&logo=swift&logoColor=white">
+  <img alt="Apple silicon and Intel" src="https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-BE684B?style=flat-square">
+  <img alt="License pending" src="https://img.shields.io/badge/license-pending-9AA7B2?style=flat-square">
+  <img alt="Unofficial fan project" src="https://img.shields.io/badge/unofficial-fan%20project-F6F1E7?style=flat-square">
+</p>
 
-- **One Clawd per session.** Run three Claude Code sessions, get three Clawds in a row, each with a name tag and its own accent scarf. A session that needs your OK steps to the front. More than six shows a "+N" badge.
-- **Real activity, not a spinner.** Reading, editing, running commands, searching, browsing the web, spawning sub-agents, planning, testing, building, git, installing: each has its own animation, prop and wind-up. Deploys launch a rocket, a push sends a paper plane, a long-running command earns a tea break, three failures in a row earns a bandage.
-- **Hover** a Clawd for its activity card: project, turn timer, tool count, last actions.
-- **Team behaviours.** Two sessions finish together: high-five. One finishes while others work: it passes a parcel and naps. Two sessions editing the same file: they glance at each other.
-- **Play with it.** Drag, throw, pet, poke, double-click to spin, shake it dizzy.
-- **Chat bar** (click a Clawd or press ⌃⌥Space): ask anything, or about that specific session. Answers stream from OpenRouter using your own key, so it never touches your Claude Code usage.
+- **See every session at a glance.** Each Clawd acts out what its session is doing. The one that needs you steps to the front.
+- **Never miss an approval.** The menu-bar icon shows how many sessions are waiting on you.
+- **Local by default.** Hooks write small JSON files on your disk. There are no accounts and no analytics.
 
 ## Install
 
+> **First release lands today.** The download link appears here when `v1.0.0` is published. Until then, [build from source](#build-from-source).
+
 1. Download `ClawdPet.dmg` from Releases and drag **Clawd Pet** to Applications.
-2. First launch: right-click the app, choose **Open** (it is not notarized yet), or run `xattr -dr com.apple.quarantine /Applications/ClawdPet.app`.
-3. Click **Connect**. This adds a few hook entries to `~/.claude/settings.json` (a backup is saved next to it). Disconnect any time from the menu-bar icon.
+2. First launch only: right-click the app and choose **Open**, because it isn't notarized yet. Or run:
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/ClawdPet.app
+   ```
+3. Click **Connect** when it asks. That adds Clawd Pet's hooks to `~/.claude/settings.json` and saves a backup first. Start a new Claude Code session and its Clawd appears.
 
-Requires macOS 13 or later. Liquid Glass on macOS 26+, frosted glass before.
+## Gallery
 
-## Chat setup
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gallery-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/gallery-light.png">
+  <img src="docs/assets/gallery-dark.png" width="645" alt="Sixteen of the animations: read, edit, bash, search, web, plan, test, build, git, install, agent, deploy, tea, bandage, oops, sleep">
+</picture>
 
-Menu-bar icon, then **AI settings**. Paste an [OpenRouter](https://openrouter.ai) API key and pick a model. The key is stored in the macOS Keychain, never in a file. Chat is plain Q&A (no tools). If you prefer, switch back to the Claude Code CLI there.
+Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is generated from the app's catalog.
 
-## Privacy
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/team-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/team-light.png">
+  <img src="docs/assets/team-dark.png" alt="Six Clawds in a row with name tags and session scarves. The one waiting for approval is first, and a +2 badge counts two more sessions">
+</picture>
 
-- Hooks write one small JSON file per session to `~/.claude/clawd/sessions/`: tool names, file base-names, command descriptions, counters. Never file contents or full commands.
-- The app makes **no network requests** except chat, and only after you add an OpenRouter key. A chat request contains your typed message, your recent chat messages, and, only if you turn it on, a summary of the session you are asking about. Nothing is sent otherwise. No analytics, no accounts.
+## Features
+
+| | |
+|---|---|
+| **A team of Clawds** | One per running session, six side by side, then a `+N` badge. Waiting sessions move to the front. |
+| **Live activity** | Each Clawd shows what its session is doing: reading, editing, tests, builds, git, installs, web, sub-agents, plans or compaction. |
+| **80+ pixel animations** | A deploy rocket, a tea break on long commands, a bandage after three failures, and high-fives and pass-the-parcel between sessions. |
+| **Hover card** | Hover over a Clawd to see its project, turn timer, tool count and last few actions. |
+| **Chat on your OpenRouter key** | Click a Clawd or press <kbd>⌃⌥Space</kbd>. Your key is stored in the macOS Keychain. |
+| **Private by default** | No accounts and no analytics. Nothing goes over the network unless you chat. |
 
 ## How it works
 
-Claude Code hooks call `ClawdPet --hook`, which updates that session's file. The app watches the folder and animates. Headless: `ClawdPet.app/Contents/MacOS/ClawdPet --install-hooks` / `--remove-hooks`.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/how-it-works-light.svg">
+  <img src="docs/assets/how-it-works-dark.svg" alt="Claude Code hooks, then one JSON file per session, then Clawd Pet, then one Clawd per session">
+</picture>
 
-## Build
+Claude Code runs `ClawdPet --hook` on session and tool events. The hook updates one small JSON file per session in `~/.claude/clawd/sessions/`. The app watches that folder and picks an animation for each session. Details are in [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
+
+## Privacy
+
+- **Stored:** tool names, file base names, the short description Claude writes for each command, the session's folder, and counters. Everything stays in `~/.claude/clawd/sessions/`.
+- **Never stored:** file contents or full commands.
+- **Network:** only for chat. Without an OpenRouter key, chat runs your local `claude` CLI instead.
+- **Key:** stored in the macOS Keychain, never in a file.
+
+The full list is in [docs/PRIVACY.md](docs/PRIVACY.md).
+
+<details>
+<summary><b>Build from source</b></summary>
+
+Requires macOS 13+ and the Xcode command line tools.
 
 ```sh
-cd app && ./build.sh     # universal ClawdPet.app, needs Xcode command line tools
-./package.sh             # zip + dmg
+cd app && ./build.sh          # universal ClawdPet.app (arm64 + x86_64)
+./package.sh                  # also writes ClawdPet.zip and ClawdPet.dmg
 ```
 
-Test flags (use a temp HOME, never your real one): `--selftest`, `--demo-team N`, `--gallery`, `--dump-catalog`.
+Checks, run from the repo root with a throwaway `HOME`:
 
-## License
+```sh
+HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest
+HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
+```
+</details>
 
-TODO (owner to decide before public release).
+<details>
+<summary><b>Uninstall</b></summary>
+
+1. Choose **Disconnect and remove hooks** from the menu-bar icon. Only Clawd Pet's hooks are removed.
+2. Quit Clawd Pet and drag it to the Trash.
+3. Optional cleanup:
+   ```sh
+   rm -rf ~/.claude/clawd
+   security delete-generic-password -s dev.clawdpet.app -a openrouter   # only if you added a key
+   defaults delete dev.clawdpet.app
+   ```
+
+If you've already deleted the app, remove the hooks first with `ClawdPet.app/Contents/MacOS/ClawdPet --remove-hooks`, or delete the entries that contain `ClawdPet --hook` from `~/.claude/settings.json`.
+</details>
+
+<details>
+<summary><b>FAQ</b></summary>
+
+**Does it use my Claude usage?**
+The animations never do, because they come from local hook files. Chat with an OpenRouter key doesn't either. Without a key, or with **Use Claude Code CLI instead** checked in AI settings, chat runs `claude -p`, and that does count toward your plan.
+
+**Does it work with several sessions?**
+Yes, that's what it's for. Each session gets its own Clawd, name tag and scarf colour.
+
+**Is it safe to connect?**
+Connect adds hook entries that call the app with `--hook`, after saving a backup to `~/.claude/settings.json.clawd-backup`. If your `settings.json` isn't valid JSON, it leaves the file alone. The hook only writes metadata, and the source is here if you want to check.
+
+**How do I disconnect?**
+Choose **Disconnect and remove hooks** from the menu-bar icon. Hooks you added yourself stay.
+</details>
+
+<details>
+<summary><b>Troubleshooting</b></summary>
+
+- **"Clawd Pet can't be opened."** Right-click the app and choose **Open**, or run the `xattr` line above.
+- **No Clawd appears for a session.** Check that the menu-bar icon says **Connected to Claude Code**, then start a new session. Sessions that were already running show up after their next tool call.
+- **Connect fails.** Your `~/.claude/settings.json` probably isn't valid JSON. Fix it, then connect again.
+</details>
+
+---
+
+<sub>Unofficial fan project. Not affiliated with or endorsed by Anthropic. "Claude" and the Clawd mascot belong to Anthropic. Source available. All rights reserved until a license is announced.</sub>
