@@ -8,6 +8,7 @@ Thanks for helping. Small, focused pull requests are easiest to review.
 cd app && ./build.sh                                                    # universal ClawdPet.app
 cd .. && HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # run from the repo root
 HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit           # every clip on the cell grid
+HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --frame-audit           # no pops, seams, floating props or loose limbs
 ```
 
 Always use a throwaway `HOME` under `/tmp/` for test flags, so nothing touches your real `~/.claude`. `--selftest` refuses to run with any other `HOME`.
@@ -18,8 +19,8 @@ Useful flags: `--gallery` plays every clip, `--demo-team N` writes N fake sessio
 
 1. Open a **feature request** with the trigger (which hook event, tool or command) and a rough storyboard.
 2. Add the clip to `AnimationCatalog.all` with an honest `status`: `needs-verify` until a recorded payload in `fixtures/` exercises it.
-3. Draw it in `Renderer` (`app/Sources/Sprite.swift`).
-4. Run `--pixel-audit`, then `python3 docs/assets/build/render.py` to regenerate `docs/ANIMATIONS.md` and the images.
+3. Author its frames in `app/Sources/AnimationData.swift` (integer cell poses with holds). Props go in `drawProp`, drawn from a hand.
+4. Run `--pixel-audit` and `--frame-audit`, then `python3 docs/assets/build/render.py` to regenerate `docs/ANIMATIONS.md` and the images.
 
 ## Pixel rules
 

@@ -27,6 +27,11 @@ jobs:
           export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
           app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
 
+      - name: Frame audit
+        run: |
+          export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"
+          app/ClawdPet.app/Contents/MacOS/ClawdPet --frame-audit
+
       - name: Zip
         run: ditto -c -k --keepParent app/ClawdPet.app ClawdPet.zip
 
