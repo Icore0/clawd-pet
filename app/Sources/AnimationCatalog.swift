@@ -35,7 +35,6 @@ final class AmbientMemory {
 }
 
 enum AnimationCatalog {
-    static let alarmPriority = 70
     static let waitingPriority = 60
     static let errorPriority = 50
     static let eventPriority = 40
@@ -71,10 +70,10 @@ enum AnimationCatalog {
         clip("install", "install", "mood working, kind install", activityPriority, action: 2.2, loop: true, pose: "arms"),
         clip("ask", "waiting", "mood waiting, kind is not yourTurn", waitingPriority, action: 1.4, loop: true, pose: "arms"),
         clip("yourTurn", "waiting", "mood waiting, kind yourTurn", waitingPriority, action: 1.0, loop: true, pose: "lean"),
-        clip("done", "done", "mood done", eventPriority, action: 0.8, loop: true, pose: "arms"),
+        clip("done", "done", "mood done", eventPriority, action: 0.8, loop: false, pose: "arms"),
         clip("oops", "oops", "mood oops", errorPriority, action: 1.0, loop: true, pose: "squash"),
-        clip("hello", "hello", "mood hello", eventPriority, action: 0.8, loop: true, pose: "arms"),
-        clip("bye", "bye", "mood bye", eventPriority, action: 0.8, loop: true, pose: "arms"),
+        clip("hello", "hello", "mood hello", eventPriority, action: 0.8, loop: false, pose: "arms"),
+        clip("bye", "bye", "mood bye", eventPriority, action: 0.8, loop: false, pose: "arms"),
         clip("think", "working", "mood working, kind has no activity entry", activityPriority, action: 1.5, loop: true, pose: "eyes"),
         clip("breathe", "ambient", "weighted idle pool", ambientPriority, action: 3.2, loop: true, pose: "squash"),
         clip("blink", "ambient", "weighted idle pool", ambientPriority, action: 0.4, loop: true, pose: "eyes", wind: 0.05, settle: 0.08),
@@ -93,7 +92,10 @@ enum AnimationCatalog {
         clip("listen", "listen", "listening", eventPriority, action: 1.3, loop: true, pose: "eyes"),
         clip("chatThink", "chatThink", "chatBusy", eventPriority, action: 1.7, loop: true, pose: "eyes"),
         clip("chatTalk", "chatTalk", "chat reply younger than 3s", eventPriority, action: 1.5, loop: true, pose: "arms"),
-        clip("alarm", "alarm", "StopFailure or quota, unverified", alarmPriority, action: 0.6, loop: false, pose: "arms", status: "needs-verify"),
+        clip("testPass", "testPass", "a test command finished, first 2.5s", eventPriority, action: 2.2, loop: false, pose: "arms", props: "check"),
+        clip("testFail", "testFail", "a test command failed, first 2.5s", errorPriority, action: 2.0, loop: false, pose: "squash", props: "x"),
+        clip("handoff", "handoff", "a sub-agent started, first 2.5s", eventPriority, action: 1.4, loop: false, pose: "arms", props: "parcel"),
+        clip("grind", "grind", "working turn longer than 20 min, 3s every 5 min", eventPriority, action: 3.0, loop: false, pose: "arms"),
         clip("deploy", "deploy", "command vercel, netlify, fly deploy, npm publish, or docker push", activityPriority, action: 1.8, loop: true, pose: "arms", props: "mark", wind: 0.45, settle: 0.55),
         clip("commit", "commit", "command git commit", activityPriority, action: 1.0, loop: true, pose: "arms", props: "seal"),
         clip("push", "push", "command git push", activityPriority, action: 1.3, loop: true, pose: "lean", props: "plane"),
@@ -117,7 +119,7 @@ enum AnimationCatalog {
         clip("coffee", "coffee", "earliest session today, first 30s", idlePriority, action: 2.0, loop: true, pose: "arms", props: "cup"),
         clip("confetti", "confetti", "tool 100 or first commit today, 2s", eventPriority, action: 1.4, loop: false, pose: "arms", props: "dots"),
         clip("nightcap", "nightcap", "idle, local hour 1 through 4", idlePriority, action: 2.6, loop: true, pose: "eyes", props: "moon"),
-        clip("conflict", "conflict", "failure text has CONFLICT or Automatic merge failed", errorPriority, action: 1.0, loop: false, pose: "squash", props: "mark", status: "needs-verify"),
+        clip("conflict", "conflict", "failure text has CONFLICT or Automatic merge failed", errorPriority, action: 1.0, loop: false, pose: "squash", props: "mark"),
         clip("conflictStare", "team", "two edits of the same file within 60s", eventPriority, action: 1.2, loop: true, pose: "eyes", wind: 0.25, settle: 0.35),
         clip("highFive", "team", "two done moods within 3s", eventPriority, action: 0.8, loop: false, pose: "arms", wind: 0.15, settle: 0.25),
         clip("wave", "team", "a session sid newly appeared", eventPriority, action: 0.9, loop: false, pose: "arms", wind: 0.12, settle: 0.22),
@@ -142,13 +144,16 @@ enum AnimationCatalog {
         clip("timeout", "chat", "chat status timeout", eventPriority, action: 1.0, loop: true, pose: "eyes")
     ]
 
+    /// Id lookup, built once (the renderer asks several times per frame per character).
+    static let index: [String: Animation] = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+
     static func byId(_ id: String) -> Animation {
-        all.first { $0.id == id } ?? all[0]
+        index[id] ?? all[0]
     }
 
     /// Walks tracks. A looping action stays in that track after anticipation; a one-shot continues into settle.
     static func placement(id: String, elapsed: Double) -> Placement? {
-        guard let anim = all.first(where: { $0.id == id }), !anim.tracks.isEmpty, !anim.instant else { return nil }
+        guard let anim = index[id], !anim.tracks.isEmpty, !anim.instant else { return nil }
         let t = max(0, elapsed)
         if anim.loop {
             let anti = anim.tracks.first { $0.phase == "anticipation" }
@@ -211,7 +216,8 @@ enum AnimationCatalog {
         sessions: [SessionPet] = [],
         sid: String = "",
         bumping: Bool = false,
-        waving: Bool = false
+        waving: Bool = false,
+        turnStart: Date? = nil
     ) -> Animation {
         _ = subagentCount
         _ = lastDurationMs
@@ -221,7 +227,10 @@ enum AnimationCatalog {
             return byId(team)
         }
         if sleeping { return byId("sleep") }
-        if activityId == "alarm" { return byId("alarm") }
+        // Short reactions to one event: they play once, then the session's normal clip takes over.
+        if ["testPass", "testFail", "handoff"].contains(activityId), let eventAt, now.timeIntervalSince(eventAt) < 2.5 {
+            return byId(activityId)
+        }
         if mood == "waiting", let eventAt {
             let waited = now.timeIntervalSince(eventAt)
             if waited > 600 { return byId("flag") }
@@ -236,7 +245,11 @@ enum AnimationCatalog {
         }
         let nowMs = now.timeIntervalSince1970 * 1000
         if toolTimes.filter({ nowMs - $0 < 10_000 }).count >= 15 { return byId("frantic") }
-        if !activityId.isEmpty, all.contains(where: { $0.id == activityId }) {
+        if mood == "working", let turnStart, now.timeIntervalSince(turnStart) > 1_200,
+           now.timeIntervalSince1970.truncatingRemainder(dividingBy: 300) < 3 {
+            return byId("grind")
+        }
+        if !activityId.isEmpty, !["testPass", "testFail", "handoff"].contains(activityId), index[activityId] != nil {
             return byId(activityId)
         }
         if mood == "waiting" { return byId(kind == .yourTurn ? "yourTurn" : "ask") }
@@ -252,7 +265,7 @@ enum AnimationCatalog {
         }
         if earliestToday, let startedAt, now.timeIntervalSince(startedAt) < 30 { return byId("coffee") }
         if celebrate { return byId("confetti") }
-        if let startedAt, mood == "idle" {
+        if startedAt != nil, mood == "idle" {
             let hour = Calendar.current.component(.hour, from: now)
             if (1...4).contains(hour) { return byId("nightcap") }
         }
@@ -265,16 +278,20 @@ enum AnimationCatalog {
         if pick(mood: "waiting", kind: .read).id != "ask" { return "waiting over read" }
         if pick(mood: "working", kind: .read).id != "read" { return "working over read" }
         if pick(mood: "oops", kind: .read).id != "oops" { return "oops over read" }
+        // Ambient clips play to the end (no flip-flop between frames) and never repeat back to back.
         let memory = AmbientMemory()
         var ids: [String] = []
-        for i in 0..<40 {
-            let now = Date(timeIntervalSinceReferenceDate: 10_000 + Double(i))
-            let held = memory.lastId
-            let recent = !held.isEmpty && now.timeIntervalSince(memory.chosenAt) < 20
+        var current = "", since = Date.distantPast
+        for i in 0..<(12 * 120) {
+            let now = Date(timeIntervalSinceReferenceDate: 10_000 + Double(i) / 12)
             let id = pick(mood: "idle", kind: .none, now: now, memory: memory).id
-            if i < 20 && recent && id == held { return "ambient repeated \(id) inside 20s" }
-            ids.append(id)
+            if id != current {
+                if !current.isEmpty && now.timeIntervalSince(since) + 0.0001 < byId(current).duration { return "ambient \(current) cut short" }
+                if id == current { return "ambient repeated \(id)" }
+                ids.append(id); current = id; since = now
+            }
         }
+        for i in 1..<ids.count where ids[i] == ids[i - 1] { return "ambient back to back \(ids[i])" }
         if Set(ids).count < 3 { return "ambient variety" }
         for anim in all {
             if anim.instant {
@@ -306,6 +323,8 @@ enum AnimationCatalog {
         action: Double, loop: Bool, pose: String, props: String = "", status: String = "done",
         wind: Double = 0.20, settle: Double = 0.30
     ) -> Animation {
+        // The action track lasts exactly as long as the hand-authored frames.
+        let action = AnimationData.clips[id].map { Double($0.frameCount) / 12 } ?? action
         let tracks = [
             Track(phase: "anticipation", duration: wind, pose: "squash"),
             Track(phase: "action", duration: action, pose: pose),
@@ -444,7 +463,14 @@ enum AnimationCatalog {
         }
         let doneClips = ["deploy", "commit", "push", "pull", "lint", "migrate", "docker", "serve", "mcp", "burstRead", "notebook", "webSearch", "webFetch"]
         for id in doneClips where byId(id).status != "done" { return "\(id) status" }
-        if byId("alarm").status != "needs-verify" || byId("conflict").status != "needs-verify" { return "alarm conflict status" }
+        if all.contains(where: { $0.id == "alarm" }) { return "alarm has no verified trigger" }
+        let ev = Date(timeIntervalSince1970: 1_700_000_000)
+        if pick(mood: "working", kind: .think, now: ev.addingTimeInterval(1), activityId: "testPass", eventAt: ev).id != "testPass" { return "test pass" }
+        if pick(mood: "working", kind: .think, now: ev.addingTimeInterval(3), activityId: "testPass", eventAt: ev).id == "testPass" { return "test pass lingers" }
+        if pick(mood: "working", kind: .think, now: ev.addingTimeInterval(1), activityId: "testFail", eventAt: ev).id != "testFail" { return "test fail" }
+        if pick(mood: "working", kind: .agent, now: ev.addingTimeInterval(1), activityId: "handoff", eventAt: ev).id != "handoff" { return "handoff" }
+        if pick(mood: "working", kind: .agent, now: ev.addingTimeInterval(4), activityId: "handoff", eventAt: ev).id != "agent" { return "handoff lingers" }
+        for anim in all where anim.id != "glide" && AnimationData.clips[anim.id] == nil { return "\(anim.id) has no frame data" }
         func named(_ command: String) -> String {
             activityName(tool: "Bash", input: ["command": command], previousTool: "", toolTimes: [], now: 0)
         }
@@ -504,7 +530,11 @@ enum AnimationCatalog {
         return nil
     }
 
+    /// Keeps the current ambient clip until it has played once, then rolls a different one.
     private static func ambient(now: Date, memory: AmbientMemory) -> Animation {
+        if !memory.lastId.isEmpty, now >= memory.chosenAt, now.timeIntervalSince(memory.chosenAt) < byId(memory.lastId).duration {
+            return byId(memory.lastId)
+        }
         let total = ambientWeights.reduce(0) { $0 + $1.1 }
         let roll = abs(Int(now.timeIntervalSinceReferenceDate) &* 1103515245) % total
         var acc = 0
@@ -513,9 +543,7 @@ enum AnimationCatalog {
             acc += pair.1
             if roll < acc { idx = i; break }
         }
-        if ambientWeights[idx].0 == memory.lastId && now.timeIntervalSince(memory.chosenAt) < 20 {
-            idx = (idx + 1) % ambientWeights.count
-        }
+        if ambientWeights[idx].0 == memory.lastId { idx = (idx + 1) % ambientWeights.count }
         let id = ambientWeights[idx].0
         memory.lastId = id
         memory.chosenAt = now
