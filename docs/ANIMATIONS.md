@@ -1,6 +1,6 @@
 # Animations
 
-86 clips, generated from the app's catalog (`ClawdPet --dump-catalog`). Do not edit by hand: run `python3 docs/assets/build/render.py`.
+86 clips, generated from the app's catalog (`Wigglet --dump-catalog`). Do not edit by hand: run `python3 docs/assets/build/render.py`.
 
 Status `needs-verify` means the trigger is implemented but no recorded hook payload in `fixtures/` exercises it yet.
 

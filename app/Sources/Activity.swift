@@ -95,7 +95,7 @@ struct ActivityView: View {
         }
         HStack(spacing: 14) {
             if let ms = s.turnStart { Label(clock(Date(timeIntervalSince1970: ms / 1000)), systemImage: "timer") }
-            Label("\(s.toolCount) tools", systemImage: "wrench.and.screwdriver")
+            Label(s.toolCount == 1 ? "1 tool" : "\(s.toolCount) tools", systemImage: "wrench.and.screwdriver")
         }.font(.system(size: 11)).foregroundStyle(.secondary)
         if model.showLatest && !watcher.latest.message.isEmpty {
             latest(watcher.latest)
@@ -106,7 +106,7 @@ struct ActivityView: View {
         } else {
             ForEach(Array(s.events.suffix(6).reversed())) { e in
                 HStack(spacing: 8) {
-                    Image(systemName: kindIcon[e.kind] ?? "circle.fill").font(.system(size: 11)).frame(width: 16).foregroundStyle(clawdOrange)
+                    Image(systemName: kindIcon[e.kind] ?? "circle.fill").font(.system(size: 11)).frame(width: 16).foregroundStyle(wiggletOrange)
                         .accessibilityHidden(true)
                     Text(e.text.isEmpty ? e.kind.rawValue : e.text).font(.system(size: 12)).lineLimit(1)
                     Spacer(minLength: 6)

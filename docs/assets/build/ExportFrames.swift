@@ -1,7 +1,7 @@
 // Offscreen exporter for README assets. Uses the app's own Renderer, Pen and PetModel; nothing is redrawn by hand.
 //   export-frames cells                   -> JSON of every catalog clip as 12 fps cell frames (stdout)
 //   export-frames scene <spec.json> <dir>  -> PNG frames of the real team panel (name tags, scarves, +N badge)
-//   export-frames catalog                  -> AnimationCatalog.markdown(), same table as `ClawdPet --dump-catalog`
+//   export-frames catalog                  -> AnimationCatalog.markdown(), same table as `Wigglet --dump-catalog`
 // Built by export_frames.sh against app/Sources minus main.swift. Run with a throwaway HOME.
 import AppKit
 import SwiftUI
@@ -147,5 +147,12 @@ extension ExportFrames {
 final class AppDelegate {
     static var shared = AppDelegate()
     let model = PetModel()
+    let chat = ChatModel()
+    var soundsOn = false
+    func jump(_ s: SessionPet) {}
+    func applyScale(_ v: Double) {}
+    func rebuildMenu() {}
+    func resetPosition() {}
+    func toggleLogin() {}
 }
 let canvasH: CGFloat = 280

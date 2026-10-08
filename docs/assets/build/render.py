@@ -205,8 +205,10 @@ def social(banner_frames):
     art = banner_frames["dark"][14]
     im.paste(art, (0, H - art.height))
     d = ImageDraw.Draw(im)
-    d.text((72, 70), "Clawd Pet", font=font(64, True), fill=CREAM)
-    d.text((72, 150), "One Clawd for every Claude Code session.", font=font(26), fill=(170, 160, 148))
+    icon = Image.open(ASSETS / "icon.png").convert("RGBA").resize((128, 128), Image.NEAREST)
+    im.paste(icon, (60, 44), icon)
+    d.text((200, 70), "Wigglet", font=font(64, True), fill=CREAM)
+    d.text((200, 150), "One Wigglet for every Claude Code session.", font=font(26), fill=(170, 160, 148))
     d.text((W - 72, 84), "unofficial fan project", font=font(16), fill=(120, 110, 100), anchor="ra")
     d.rectangle((0, H - 8, W, H), fill=ORANGE)
     save_png(im, ASSETS / "social-preview.png", colors=128)
@@ -224,8 +226,8 @@ def card(work):
 
 
 def diagram():
-    steps = [("Claude Code", "hooks fire on tool use"), ("one JSON per session", "~/.claude/clawd/sessions/"),
-             ("Clawd Pet", "watches the folder"), ("one Clawd per session", "on your desktop")]
+    steps = [("Claude Code", "hooks fire on tool use"), ("one JSON per session", "~/.claude/wigglet/sessions/"),
+             ("Wigglet", "watches the folder"), ("one Wigglet per session", "on your desktop")]
     for theme, t in THEMES.items():
         hexc = lambda c: "#%02x%02x%02x" % c
         bw, bh, gap, x = 200, 76, 44, 8
@@ -244,7 +246,7 @@ def diagram():
             x += bw + gap
         width = x - gap + 8
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{bh + 16}" viewBox="0 0 {width} {bh + 16}" role="img" '
-               f'aria-label="Claude Code hooks write one JSON file per session; Clawd Pet watches the folder and shows one Clawd per session">'
+               f'aria-label="Claude Code hooks write one JSON file per session; Wigglet watches the folder and shows one Wigglet per session">'
                + "".join(parts) + "</svg>\n")
         (ASSETS / f"how-it-works-{theme}.svg").write_text(svg)
 
@@ -254,7 +256,7 @@ def animations_md(work):
     n = sum(1 for line in table.splitlines()[2:] if line.startswith("| "))
     (DOCS / "ANIMATIONS.md").write_text(
         "# Animations\n\n"
-        f"{n} clips, generated from the app's catalog (`ClawdPet --dump-catalog`). Do not edit by hand: "
+        f"{n} clips, generated from the app's catalog (`Wigglet --dump-catalog`). Do not edit by hand: "
         "run `python3 docs/assets/build/render.py`.\n\n"
         "Status `needs-verify` means the trigger is implemented but no recorded hook payload in `fixtures/` exercises it yet.\n\n"
         + table + "\n")

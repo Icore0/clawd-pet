@@ -204,7 +204,7 @@ struct ChatView: View {
 
     var bar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "sparkle").font(.system(size: 14, weight: .semibold)).foregroundStyle(clawdOrange)
+            Image(systemName: "sparkle").font(.system(size: 14, weight: .semibold)).foregroundStyle(wiggletOrange)
             TextField("Ask \(PRODUCT_NAME)…", text: $chat.text)
                 .textFieldStyle(.plain).font(.system(size: 14)).focused($focused)
                 .onSubmit { chat.send() }
@@ -218,7 +218,7 @@ struct ChatView: View {
             }.buttonStyle(.plain).help("Dictate (uses macOS Dictation or your dictation app)")
             Button { chat.send() } label: {
                 Image(systemName: "arrow.up.circle.fill").font(.system(size: 22))
-                    .foregroundStyle(chat.text.isEmpty || chat.isBusy ? Color.secondary.opacity(0.5) : clawdOrange)
+                    .foregroundStyle(chat.text.isEmpty || chat.isBusy ? Color.secondary.opacity(0.5) : wiggletOrange)
             }.buttonStyle(.plain).disabled(chat.text.isEmpty || chat.isBusy)
         }
         .padding(.horizontal, 16).frame(width: Self.width, height: 48)

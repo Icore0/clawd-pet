@@ -60,7 +60,7 @@ final class PetModel: ObservableObject {
     var project = ""
     var sessions: [SessionPet] = []
     var hoveredSid: String?
-    /// The session the hover card shows. Survives the pointer moving from the Clawd onto the card.
+    /// The session the hover card shows. Survives the pointer moving from the Wigglet onto the card.
     var cardSid: String?
     var cardHover = false
     var cardExpanded = false
@@ -122,7 +122,7 @@ final class PetModel: ObservableObject {
     var conflictFile = ""
     var demo: [String] = []     // --demo: cycle through behaviours
     var ambient = AmbientMemory()
-    /// One ambient memory per character, so idle clips play to the end and two Clawds don't share a roll.
+    /// One ambient memory per character, so idle clips play to the end and two Wigglets don't share a roll.
     var ambientBy: [String: AmbientMemory] = [:]
     func ambientMemory(_ sid: String) -> AmbientMemory {
         if let m = ambientBy[sid] { return m }

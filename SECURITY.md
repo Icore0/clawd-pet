@@ -7,5 +7,5 @@ Include the version, macOS version, steps to reproduce, and what an attacker cou
 Areas that matter most:
 
 - the hook installer, which edits `~/.claude/settings.json`
-- `ClawdPet --hook`, which parses JSON from Claude Code on stdin
+- `Wigglet --hook`, which parses JSON from Claude Code on stdin
 - OpenRouter key handling in the Keychain

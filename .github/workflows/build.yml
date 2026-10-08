@@ -19,24 +19,24 @@ jobs:
 
       - name: Selftest
         run: |
-          export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
-          app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest
+          export HOME=/tmp/wigglet-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
+          app/Wigglet.app/Contents/MacOS/Wigglet --selftest
 
       - name: Pixel audit
         run: |
-          export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
-          app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
+          export HOME=/tmp/wigglet-ci-home && mkdir -p "$HOME"   # --selftest refuses a HOME outside /tmp/
+          app/Wigglet.app/Contents/MacOS/Wigglet --pixel-audit
 
       - name: Frame audit
         run: |
-          export HOME=/tmp/clawd-ci-home && mkdir -p "$HOME"
-          app/ClawdPet.app/Contents/MacOS/ClawdPet --frame-audit
+          export HOME=/tmp/wigglet-ci-home && mkdir -p "$HOME"
+          app/Wigglet.app/Contents/MacOS/Wigglet --frame-audit
 
       - name: Zip
-        run: ditto -c -k --keepParent app/ClawdPet.app ClawdPet.zip
+        run: ditto -c -k --keepParent app/Wigglet.app Wigglet.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ClawdPet-${{ github.sha }}
-          path: ClawdPet.zip
+          name: Wigglet-${{ github.sha }}
+          path: Wigglet.zip
           retention-days: 14

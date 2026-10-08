@@ -5,10 +5,10 @@ Thanks for helping. Small, focused pull requests are easiest to review.
 ## Build and check
 
 ```sh
-cd app && ./build.sh                                                    # universal ClawdPet.app
-cd .. && HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # run from the repo root
-HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit           # every clip on the cell grid
-HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --frame-audit           # no pops, seams, floating props or loose limbs
+cd app && ./build.sh                                                    # universal Wigglet.app
+cd .. && HOME=/tmp/wigglet-test app/Wigglet.app/Contents/MacOS/Wigglet --selftest     # run from the repo root
+HOME=/tmp/wigglet-test app/Wigglet.app/Contents/MacOS/Wigglet --pixel-audit           # every clip on the cell grid
+HOME=/tmp/wigglet-test app/Wigglet.app/Contents/MacOS/Wigglet --frame-audit           # no pops, seams, floating props or loose limbs
 ```
 
 Always use a throwaway `HOME` under `/tmp/` for test flags, so nothing touches your real `~/.claude`. `--selftest` refuses to run with any other `HOME`.
@@ -25,7 +25,7 @@ Useful flags: `--gallery` plays every clip, `--demo-team N` writes N fake sessio
 ## Pixel rules
 
 - Whole cells only: integer positions and sizes, no rotation, no scaling, no anti-aliasing.
-- Don't change Clawd's silhouette, proportions or colours (`#D97757` body, `#BE684B` shade). New work goes into poses, props, effects and timing.
+- Don't change Wigglet's silhouette, proportions or colours (`#D97757` body, `#BE684B` shade). New work goes into poses, props, effects and timing.
 - Props use their own palette, so they never blend into the orange body.
 
 ## Commits

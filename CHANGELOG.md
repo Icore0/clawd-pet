@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+- Renamed to **Wigglet** (app, bundle id `dev.wigglet.app`, state folder `~/.claude/wigglet/`). Connecting replaces hooks left by the earlier Clawd Pet builds.
+- Wigglet is now a full app with a Dock icon and a main window: Home (setup with live checks), Sessions (with Jump), Animations (browse and play every clip), Settings and About.
+- Setup no longer uses a pop-up alert. It warns when the app runs from a temporary location (App Translocation) where hooks would break, and waits until your first session appears.
+- New app icon: the pixel mascot on a transparent background.
+
 ### Added
 - Hand-authored 12 fps frame data for every clip (`AnimationData.swift`), connector frames between clips, a profile turn, a crouched typing stance, and dithered pop-in and fade-out for session start and end.
 - New clips: `testPass`, `testFail`, `handoff` (sub-agent starts), `grind` (long turns).
@@ -23,8 +29,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ## [1.0.0] - not yet released
 
 ### Added
-- One Clawd per Claude Code session, up to six side by side, plus a `+N` badge. Waiting sessions move to the front.
-- Hooks for 14 Claude Code events that write one JSON file per session to `~/.claude/clawd/sessions/`.
+- One Wigglet per Claude Code session, up to six side by side, plus a `+N` badge. Waiting sessions move to the front.
+- Hooks for 14 Claude Code events that write one JSON file per session to `~/.claude/wigglet/sessions/`.
 - An animation catalog with priorities, triggers and 12 fps whole-cell clips. See `docs/ANIMATIONS.md`.
 - Team moves between sessions: high-five, pass-the-parcel, glances and bumps.
 - A hover card with project, turn timer, tool count and recent actions.

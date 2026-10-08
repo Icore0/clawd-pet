@@ -5,8 +5,8 @@ Every image and generated doc comes from the app's own code, so a refresh is fiv
 ```sh
 python3 docs/assets/build/render.py                                     # 1. images + docs/ANIMATIONS.md from app/Sources
 cd app && ./build.sh && cd ..                                           # 2. build the app
-HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # 3. checks (run from the repo root)
-HOME=/tmp/clawd-test app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit
+HOME=/tmp/wigglet-test app/Wigglet.app/Contents/MacOS/Wigglet --selftest     # 3. checks (run from the repo root)
+HOME=/tmp/wigglet-test app/Wigglet.app/Contents/MacOS/Wigglet --pixel-audit
 git add -A docs README.md CHANGELOG.md && git commit -m "Refresh docs and assets"   # 5. review the diff first
 ```
 
@@ -15,12 +15,12 @@ Then update the counts in README.md and docs/REPO_SETUP.md if the number of clip
 ## Releasing v1.0.0 (only after the owner confirms the build is final)
 
 ```sh
-cd app && ./package.sh && cd ..                       # ClawdPet.zip + ClawdPet.dmg
-cd app && shasum -a 256 ClawdPet.zip ClawdPet.dmg > SHA256SUMS.txt && cd ..
+cd app && ./package.sh && cd ..                       # Wigglet.zip + Wigglet.dmg
+cd app && shasum -a 256 Wigglet.zip Wigglet.dmg > SHA256SUMS.txt && cd ..
 # README: replace the "First release lands today" note with the download link; CHANGELOG: set the date
 git tag v1.0.0 && git push origin main v1.0.0
-gh release create v1.0.0 app/ClawdPet.zip app/ClawdPet.dmg app/SHA256SUMS.txt \
-  --title "Clawd Pet 1.0.0" --notes-file docs/RELEASE_NOTES_1.0.0.md
+gh release create v1.0.0 app/Wigglet.zip app/Wigglet.dmg app/SHA256SUMS.txt \
+  --title "Wigglet 1.0.0" --notes-file docs/RELEASE_NOTES_1.0.0.md
 ```
 
 ## How the images are made

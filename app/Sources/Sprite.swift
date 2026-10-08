@@ -1,12 +1,12 @@
 import AppKit
 import SwiftUI
 
-// Clawd's proportions come from the official pixel mascot:
+// Wigglet's proportions come from the official pixel mascot:
 // body 8x6 units, arm nubs 2x2, 1x1 eyes at body cols 1 and 6, four 1-wide legs at cols 0,2,5,7.
 // Sprite space: X 0..12 (arms+body+arms), Y 0..8 (body 0..6, legs 6..8).
 
-let clawdOrange = Color(red: 0.851, green: 0.467, blue: 0.341)   // #D97757
-let clawdDark = Color(red: 0.745, green: 0.408, blue: 0.294)     // #BE684B
+let wiggletOrange = Color(red: 0.851, green: 0.467, blue: 0.341)   // #D97757
+let wiggletDark = Color(red: 0.745, green: 0.408, blue: 0.294)     // #BE684B
 let ink = Color.black
 
 enum Eyes: Equatable { case open, tall, dash, cross }
@@ -242,7 +242,7 @@ func sessionAccent(_ name: String) -> Color {
     return sessionAccents[sum % 7]
 }
 
-func drawClawd(_ p: Pen, _ pose: Pose, color: Color = clawdOrange, eyes: Bool = true, arms: Bool = true, accent: Color? = nil) {
+func drawWigglet(_ p: Pen, _ pose: Pose, color: Color = wiggletOrange, eyes: Bool = true, arms: Bool = true, accent: Color? = nil) {
     let lean = max(-1, min(1, pose.lean))
     // Feet always stay on the ground row (y 8): squash lowers the head one row, crouch folds the legs to one cell.
     let squash = pose.squash == 0 ? 0 : 1
@@ -254,11 +254,11 @@ func drawClawd(_ p: Pen, _ pose: Pose, color: Color = clawdOrange, eyes: Bool = 
     p.layer = .body
     p.rect(Double(bodyX), Double(top), 8, Double(bodyH), color)
     switch pose.profile {
-    case .right: p.rect(Double(bodyX), Double(top), 1, Double(bodyH), clawdDark)
-    case .left: p.rect(Double(bodyX + 7), Double(top), 1, Double(bodyH), clawdDark)
+    case .right: p.rect(Double(bodyX), Double(top), 1, Double(bodyH), wiggletDark)
+    case .left: p.rect(Double(bodyX + 7), Double(top), 1, Double(bodyH), wiggletDark)
     case .back:
-        p.rect(Double(bodyX), Double(top), 1, Double(bodyH), clawdDark)
-        p.rect(Double(bodyX + 7), Double(top), 1, Double(bodyH), clawdDark)
+        p.rect(Double(bodyX), Double(top), 1, Double(bodyH), wiggletDark)
+        p.rect(Double(bodyX + 7), Double(top), 1, Double(bodyH), wiggletDark)
     case .none: break
     }
     if let accent, bodyH > 4 { p.rect(Double(bodyX), Double(top + 4), 8, 1, accent) }
@@ -661,8 +661,8 @@ struct Renderer {
         let l = leftHand(p), r = rightHand(p)
         let was = pen.layer
         pen.layer = .arm
-        pen.rect(Double(l.x), Double(l.y), 2, 2, clawdOrange)
-        pen.rect(Double(r.x), Double(r.y), 2, 2, clawdOrange)
+        pen.rect(Double(l.x), Double(l.y), 2, 2, wiggletOrange)
+        pen.rect(Double(r.x), Double(r.y), 2, 2, wiggletOrange)
         pen.layer = was
     }
     /// Top-left cell of each 2x2 hand, in sprite cells. Props are drawn from these so they move with the hand.
@@ -684,7 +684,7 @@ struct Renderer {
                 p.px(3, y, .green)
                 p.rect(4, Double(y), Double(min(4, len)), 1, Color(red: 0.3, green: 0.75, blue: 0.4))
             } else {
-                p.rect(3 + Double(i % 2), Double(y), Double(min(4, len)), 1, i % 2 == 0 ? clawdOrange : Color(white: 0.85))
+                p.rect(3 + Double(i % 2), Double(y), Double(min(4, len)), 1, i % 2 == 0 ? wiggletOrange : Color(white: 0.85))
             }
         }
         if kind == "bash" && frame % 12 < 6 { p.px(8, 6, .white) }
@@ -697,7 +697,7 @@ struct Renderer {
         pen.fade = pose.fade
         defer { pen.fade = 0 }
         let typing = name == "edit" || name == "bash" || name == "frantic"
-        drawClawd(pen, pose, arms: false, accent: accent)
+        drawWigglet(pen, pose, arms: false, accent: accent)
         if typing { drawLaptop(pen, name, frame) } else { drawProp(pen, name, pose, frame) }
         drawArms(pen, pose)
         drawHat(pen, name, pose, frame)
@@ -851,8 +851,8 @@ struct Renderer {
             rect(3, -1, 7, 1, dark)
             rect(2, 1, 1, 2, dark)
             rect(9, 1, 1, 2, dark)
-            px(2, 1, clawdOrange)
-            px(9, 2, clawdOrange)
+            px(2, 1, wiggletOrange)
+            px(9, 2, wiggletOrange)
         case "bash":
             rect(2, -1, 7, 2, dark)
             rect(2, 0, 7, 1, Color(white: 0.28))
@@ -937,7 +937,7 @@ struct Renderer {
         return pool[abs(Int(m.stamp / 7)) % pool.count]
     }
 
-    // MARK: effects (cells only, so every effect sits on the same grid as Clawd)
+    // MARK: effects (cells only, so every effect sits on the same grid as Wigglet)
     static let glyphs: [String: [String]] = [
         "?": ["###", "..#", ".##", "...", ".#."],
         "!": ["#", "#", "#", ".", "#"],
@@ -957,13 +957,13 @@ struct Renderer {
         }
     }
 
-    /// A 7-cell-wide helper Clawd standing on the ground row `g`.
+    /// A 7-cell-wide helper Wigglet standing on the ground row `g`.
     func mini(_ p: Pen, _ x: Int, _ g: Int, hop: Int) {
         let y = g - 3 - hop
-        p.rect(Double(x), Double(y), 5, 2, clawdOrange)
+        p.rect(Double(x), Double(y), 5, 2, wiggletOrange)
         p.px(x + 1, y, ink); p.px(x + 3, y, ink)
-        p.px(x - 1, y + 1, clawdOrange); p.px(x + 5, y + 1, clawdOrange)
-        for lx in [x, x + 2, x + 4] { p.px(lx, y + 2, clawdOrange) }
+        p.px(x - 1, y + 1, wiggletOrange); p.px(x + 5, y + 1, wiggletOrange)
+        for lx in [x, x + 2, x + 4] { p.px(lx, y + 2, wiggletOrange) }
     }
 
     /// Effects for clip `b`. `frame` counts from the clip start, `wall` is the free-running 12 fps clock.

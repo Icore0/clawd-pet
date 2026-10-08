@@ -1,10 +1,10 @@
 #!/bin/sh
-# Builds a universal ClawdPet.app next to this script.   Usage: ./build.sh
+# Builds a universal Wigglet.app next to this script.   Usage: ./build.sh
 set -e
-PRODUCT_NAME="Clawd Pet"
-BINARY_NAME=ClawdPet
-BUNDLE_ID=dev.clawdpet.app
-PRODUCT_SLUG=clawd
+PRODUCT_NAME="Wigglet"
+BINARY_NAME=Wigglet
+BUNDLE_ID=dev.wigglet.app
+PRODUCT_SLUG=wigglet
 cd "$(dirname "$0")"
 A=$BINARY_NAME.app
 rm -rf $A build && mkdir -p $A/Contents/MacOS build
@@ -32,7 +32,7 @@ cat > $A/Contents/Info.plist <<P
 <key>CFBundleShortVersionString</key><string>1.0.0</string>
 <key>CFBundleVersion</key><string>1.0.0</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
-<key>LSUIElement</key><true/>
+<key>LSUIElement</key><false/>
 <key>NSAppleEventsUsageDescription</key><string>Jump to session selects the Terminal or iTerm2 tab where that Claude Code session runs.</string>
 <key>NSMicrophoneUsageDescription</key><string>$PRODUCT_NAME's mic button starts macOS Dictation so you can talk instead of type.</string>
 </dict></plist>

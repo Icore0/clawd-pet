@@ -252,7 +252,8 @@ enum HookInstaller {
         let exe = Bundle.main.executablePath ?? CommandLine.arguments[0]
         return "[ -x '\(exe)' ] && '\(exe)' --hook; exit 0"
     }
-    static func isOurs(_ c: String) -> Bool { c.contains("--hook") && (c.contains("ClawdPet") || c.contains("Familiar")) }
+    /// Ours, including hooks from the earlier names (Clawd Pet, Familiar), so connecting replaces them instead of stacking.
+    static func isOurs(_ c: String) -> Bool { c.contains("--hook") && (c.contains("Wigglet") || c.contains("ClawdPet") || c.contains("Familiar")) }
 
     static func load() -> [String: Any]? {
         guard let d = FileManager.default.contents(atPath: settingsPath) else { return [:] }
@@ -260,7 +261,7 @@ enum HookInstaller {
     }
     static func save(_ s: [String: Any]) throws {
         let fm = FileManager.default
-        let backup = settingsPath + ".clawd-backup"
+        let backup = settingsPath + ".wigglet-backup"
         if fm.fileExists(atPath: settingsPath), !fm.fileExists(atPath: backup) { try? fm.copyItem(atPath: settingsPath, toPath: backup) }
         try fm.createDirectory(atPath: (settingsPath as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
         let d = try JSONSerialization.data(withJSONObject: s, options: [.prettyPrinted, .withoutEscapingSlashes])

@@ -3,7 +3,7 @@
 # Prints the path of a work dir containing the binary and frames.json.
 set -e
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-OUT="${TMPDIR:-/tmp}/clawd-export"
+OUT="${TMPDIR:-/tmp}/wigglet-export"
 mkdir -p "$OUT"
 set --
 for f in "$ROOT"/app/Sources/*.swift; do [ "$(basename "$f")" = main.swift ] || set -- "$@" "$f"; done

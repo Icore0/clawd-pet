@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security issue
-    url: https://github.com/Icore0/clawd-pet/security/advisories/new
+    url: https://github.com/Icore0/wigglet/security/advisories/new
     about: Report vulnerabilities privately.

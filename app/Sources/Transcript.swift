@@ -84,7 +84,7 @@ final class TranscriptWatcher: ObservableObject {
     @Published private(set) var latest = TranscriptReader.Latest()
     private(set) var path = ""
     private var source: DispatchSourceFileSystemObject?
-    private let queue = DispatchQueue(label: "clawd.transcript", qos: .utility)
+    private let queue = DispatchQueue(label: "wigglet.transcript", qos: .utility)
     private var lastRead = Date.distantPast
     private var pending = false
 

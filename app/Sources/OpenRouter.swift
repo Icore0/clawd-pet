@@ -5,7 +5,7 @@ import Security
 // Rules: the API key lives only in the Keychain, never in UserDefaults/files/logs, and is redacted from every error string.
 
 enum KeychainStore {
-    static var service: String { Bundle.main.bundleIdentifier ?? "dev.clawdpet.app" }
+    static var service: String { Bundle.main.bundleIdentifier ?? "dev.wigglet.app" }
     static let account = "openrouter"
 
     static func save(_ key: String) -> Bool {
@@ -120,8 +120,8 @@ enum OpenRouter {
             req.httpMethod = "POST"
             req.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.setValue("https://github.com/clawd-pet", forHTTPHeaderField: "HTTP-Referer")
-            req.setValue("Clawd Pet", forHTTPHeaderField: "X-Title")
+            req.setValue("https://github.com/wigglet", forHTTPHeaderField: "HTTP-Referer")
+            req.setValue("Wigglet", forHTTPHeaderField: "X-Title")
             let body: [String: Any] = ["model": model, "stream": true, "usage": ["include": true],
                                        "messages": messages.suffix(20).map { ["role": $0.role, "content": $0.content] }]
             req.httpBody = try? JSONSerialization.data(withJSONObject: body)

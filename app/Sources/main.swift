@@ -74,6 +74,18 @@ if CommandLine.arguments.contains("--selftest") {
         print(problem)
         exit(1)
     }
+    // Connect / disconnect round trip against this throwaway HOME, including an old ClawdPet hook to replace.
+    do {
+        let dir = (settingsPath as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let old: [String: Any] = ["hooks": ["Stop": [["hooks": [["type": "command", "command": "/Applications/ClawdPet.app/Contents/MacOS/ClawdPet --hook"]]]]], "keep": true]
+        try JSONSerialization.data(withJSONObject: old).write(to: URL(fileURLWithPath: settingsPath))
+        try HookInstaller.install()
+        guard HookInstaller.isInstalled, let s = HookInstaller.load(), let hooks = s["hooks"] as? [String: Any],
+              let stop = hooks["Stop"] as? [[String: Any]], stop.count == 1, s["keep"] as? Bool == true else { print("connect"); exit(1) }
+        try HookInstaller.remove()
+        if HookInstaller.isInstalled || (HookInstaller.load()?["keep"] as? Bool) != true { print("disconnect"); exit(1) }
+    } catch { print("hooks \(error)"); exit(1) }
     let fm = FileManager.default
     try? fm.createDirectory(atPath: sessionsDir, withIntermediateDirectories: true)
     if let files = try? fm.contentsOfDirectory(atPath: sessionsDir) {
@@ -367,6 +379,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var toastHost: NSHostingView<ToastView>!
     var cardGraceUntil = Date.distantPast
     var hoverWork: DispatchWorkItem?
+    let appState = AppState()
+    var mainWindow: NSWindow!
+    /// Test runs use a throwaway HOME; they never open windows or ask anything.
+    let testHome: Bool = {
+        let real = String(cString: getpwuid(getuid()).pointee.pw_dir)
+        return (ProcessInfo.processInfo.environment["HOME"] ?? real) != real
+    }()
     var soundsOn: Bool { get { UserDefaults.standard.bool(forKey: "sounds") } set { UserDefaults.standard.set(newValue, forKey: "sounds") } }
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -465,17 +484,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.item.button?.title = waiting > 0 ? "\(waiting)" : "✺"
             self.fitPanel()
             self.positionActivity()
-            // Close the card once the pointer has left both the Clawd and the card (after a short grace).
+            // Close the card once the pointer has left both the Wigglet and the card (after a short grace).
             if self.activityPanel.isVisible && !self.model.hover && !self.model.cardHover && Date() > self.cardGraceUntil
                 && !self.activityPanel.isKeyWindow {
                 self.hideCard()
             }
         }
 
-        if !UserDefaults.standard.bool(forKey: "askedConnect") && !HookInstaller.isInstalled {
-            UserDefaults.standard.set(true, forKey: "askedConnect")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.askConnect() }
+        // Main window: setup, sessions, animations, settings. Opens on its own until Wigglet is connected.
+        appState.delegate = self
+        mainWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 880, height: 600),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        mainWindow.title = PRODUCT_NAME
+        mainWindow.isReleasedWhenClosed = false
+        mainWindow.contentView = NSHostingView(rootView: MainView(model: model, state: appState))
+        mainWindow.center()
+        mainWindow.setFrameAutosaveName("WiggletMain")
+        NSApp.mainMenu = buildMainMenu()
+        if CommandLine.arguments.contains("--show-window") {
+            let args = CommandLine.arguments
+            let pane = args.firstIndex(of: "--pane").flatMap { $0 + 1 < args.count ? AppState.Pane(rawValue: args[$0 + 1]) : nil }
+            showMain(pane ?? .home)
         }
+        if !testHome && (!HookInstaller.isInstalled || !UserDefaults.standard.bool(forKey: "setupSeen")) {
+            UserDefaults.standard.set(true, forKey: "setupSeen")
+            showMain(.home)
+        }
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.appState.refresh() }
     }
 
     // MARK: positioning
@@ -533,7 +568,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let w = DispatchWorkItem { [weak self] in self?.showActivity() }
             hoverWork = w; DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: w)
         } else {
-            // Leave time to travel from the Clawd onto the card.
+            // Leave time to travel from the Wigglet onto the card.
             cardGraceUntil = Date().addingTimeInterval(0.45)
             if model.isDragging { hideCard() }
         }
@@ -583,7 +618,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let u = CGFloat(model.scale), f = panel.frame
         let sc = NSScreen.screens.first { $0.frame.intersects(f) } ?? NSScreen.main ?? NSScreen.screens[0]
         let vf = sc.visibleFrame
-        // Beside the team, never over a Clawd: left of the first slot, else right of the last.
+        // Beside the team, never over a Wigglet: left of the first slot, else right of the last.
         let team = CGFloat(teamPanelWidth(count: model.sessions.count, scale: model.scale))
         var x = f.minX + 8 - size.width
         if x < vf.minX + 4 { x = f.minX + team - 8 }
@@ -625,6 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         func add(_ t: String, _ sel: Selector, key: String = "", on: Bool = false) -> NSMenuItem {
             let i = NSMenuItem(title: t, action: sel, keyEquivalent: key); i.target = self; i.state = on ? .on : .off; m.addItem(i); return i
         }
+        _ = add("Open \(PRODUCT_NAME)…", #selector(openMainAction))
         _ = add("Ask \(PRODUCT_NAME)…   ⌃⌥Space", #selector(menuChat))
         m.addItem(.separator())
         let connected = HookInstaller.isInstalled
@@ -667,96 +703,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         item.menu = buildMenu()
     }
-    @objc func aiSettings() { showAISettings() }
-    @objc func connectAction() { askConnect() }
+    @objc func aiSettings() { showMain(.settings) }
+    @objc func connectAction() { showMain(HookInstaller.isInstalled ? .settings : .home) }
+    @objc func openMainAction() { showMain(nil) }
+    @objc func openSettingsAction() { showMain(.settings) }
+
+    func showMain(_ pane: AppState.Pane?) {
+        if let pane { appState.pane = pane }
+        appState.refresh()
+        NSApp.activate(ignoringOtherApps: true)
+        mainWindow.makeKeyAndOrderFront(nil)
+        // Launched at login or from a script, macOS may refuse activation; still put the window on screen.
+        mainWindow.orderFrontRegardless()
+    }
+    func rebuildMenu() { item.menu = buildMenu() }
+    func applyScale(_ v: Double) {
+        model.scale = v; UserDefaults.standard.set(v, forKey: "scale"); item.menu = buildMenu()
+        fitPanel(); positionChat(); appState.objectWillChange.send()
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { showMain(nil) }
+        return true
+    }
+
+    /// Standard app menu, so ⌘, ⌘W ⌘Q and copy/paste (for the API key) work.
+    func buildMainMenu() -> NSMenu {
+        let main = NSMenu()
+        let appItem = NSMenuItem(); main.addItem(appItem)
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "About \(PRODUCT_NAME)", action: #selector(openAboutAction), keyEquivalent: "").target = self
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Settings…", action: #selector(openSettingsAction), keyEquivalent: ",").target = self
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Hide \(PRODUCT_NAME)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "Quit \(PRODUCT_NAME)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+        let editItem = NSMenuItem(); main.addItem(editItem)
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        let winItem = NSMenuItem(); main.addItem(winItem)
+        let win = NSMenu(title: "Window")
+        win.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        win.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        winItem.submenu = win
+        NSApp.windowsMenu = win
+        return main
+    }
+    @objc func openAboutAction() { showMain(.about) }
     @objc func disconnectAction() {
         do { try HookInstaller.remove() } catch { alert("Couldn't disconnect", error.localizedDescription) }
         item.menu = buildMenu()
     }
     @objc func quit() { NSApp.terminate(nil) }
 
-    func showAISettings() {
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 380, height: 168), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        panel.title = "AI settings"
-        let secure = NSSecureTextField(frame: NSRect(x: 16, y: 112, width: 348, height: 24))
-        secure.placeholderString = "OpenRouter API key"
-        let popup = NSPopUpButton(frame: NSRect(x: 16, y: 76, width: 348, height: 26))
-        for choice in orModels {
-            popup.addItem(withTitle: choice.label)
-            popup.lastItem?.representedObject = choice.id
-        }
-        if let match = orModels.first(where: { $0.id == chat.model }) {
-            popup.selectItem(withTitle: match.label)
-        } else if let first = orModels.first {
-            chat.model = first.id
-            popup.selectItem(at: 0)
-        }
-        let cli = NSButton(checkboxWithTitle: "Use Claude Code CLI instead", target: self, action: #selector(aiCLI(_:)))
-        cli.frame = NSRect(x: 16, y: 46, width: 348, height: 22)
-        if KeychainStore.load() != nil && UserDefaults.standard.object(forKey: "useClaudeCLI") == nil { chat.useCLI = false }
-        cli.state = chat.useCLI ? .on : .off
-        let remove = NSButton(title: "Remove", target: self, action: #selector(aiRemove(_:)))
-        remove.frame = NSRect(x: 188, y: 12, width: 84, height: 28)
-        let save = NSButton(title: "Save", target: self, action: #selector(aiSave(_:)))
-        save.frame = NSRect(x: 280, y: 12, width: 84, height: 28)
-        panel.contentView?.addSubview(secure)
-        panel.contentView?.addSubview(popup)
-        panel.contentView?.addSubview(cli)
-        panel.contentView?.addSubview(remove)
-        panel.contentView?.addSubview(save)
-        secure.tag = 11
-        popup.tag = 12
-        aiPanel = panel
-        panel.center()
-        panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-    @objc func aiCLI(_ button: NSButton) {
-        chat.useCLI = button.state == .on
-        UserDefaults.standard.set(chat.useCLI, forKey: "useClaudeCLI")
-    }
-    @objc func aiRemove(_ button: NSButton) {
-        KeychainStore.delete()
-        if let secure = aiPanel?.contentView?.viewWithTag(11) as? NSSecureTextField { secure.stringValue = "" }
-    }
-    @objc func aiSave(_ button: NSButton) {
-        guard let panel = aiPanel, let secure = panel.contentView?.viewWithTag(11) as? NSSecureTextField else { return }
-        if let popup = panel.contentView?.viewWithTag(12) as? NSPopUpButton, let id = popup.selectedItem?.representedObject as? String {
-            chat.model = id
-        }
-        let typed = secure.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !typed.isEmpty && KeychainStore.save(typed) {
-            secure.stringValue = ""
-            if !UserDefaults.standard.bool(forKey: "openrouterKeyNoted") {
-                UserDefaults.standard.set(true, forKey: "openrouterKeyNoted")
-                chat.keyNote = "The key stays in the Keychain. Messages go to OpenRouter with the session summary, not file contents."
-            } else {
-                chat.keyNote = "key saved"
-            }
-        }
-        panel.orderOut(nil)
-    }
-    var aiPanel: NSPanel?
 
     func alert(_ title: String, _ text: String) {
         let a = NSAlert(); a.messageText = title; a.informativeText = text; NSApp.activate(ignoringOtherApps: true); a.runModal()
     }
-    func askConnect() {
-        let a = NSAlert()
-        a.messageText = "Connect \(PRODUCT_NAME) to Claude Code?"
-        a.informativeText = "Clawd Pet adds hook commands to ~/.claude/settings.json.\nA backup is saved beside that file."
-        a.addButton(withTitle: "Connect"); a.addButton(withTitle: "Not now")
-        NSApp.activate(ignoringOtherApps: true)
-        if a.runModal() == .alertFirstButtonReturn {
-            do { try HookInstaller.install(); model.say = "connected!"; model.clickAt = Date(); model.quip = "connected!" }
-            catch { alert("Couldn't connect", error.localizedDescription) }
-        }
-        item.menu = buildMenu()
-    }
 }
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+app.setActivationPolicy(.regular)
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()

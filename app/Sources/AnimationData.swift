@@ -99,7 +99,7 @@ enum AnimationData {
     static let clips: [String: ClipData] = {
         var c: [String: ClipData] = [:]
 
-        // Ambient idles: long holds, one change at a time, so a resting Clawd never loops visibly.
+        // Ambient idles: long holds, one change at a time, so a resting Wigglet never loops visibly.
         c["breathe"] = ClipData(keys: [K(14), K(4, armsUp1), K(2), K(16), K(1, blink), K(3)])
         c["blink"] = ClipData(keys: [K(12), K(1, blink), K(2), K(1, blink), K(10)])
         c["glance"] = ClipData(keys: [

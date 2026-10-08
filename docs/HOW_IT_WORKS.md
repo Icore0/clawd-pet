@@ -1,13 +1,13 @@
 # How it works
 
-Clawd Pet has two halves that share nothing but a folder: a hook that Claude Code runs, and the app that animates.
+Wigglet has two halves that share nothing but a folder: a hook that Claude Code runs, and the app that animates.
 
 ## 1. The hook
 
 **Connect** adds one entry per event to `~/.claude/settings.json`. Each entry runs the app binary in hook mode:
 
 ```sh
-[ -x '/Applications/ClawdPet.app/Contents/MacOS/ClawdPet' ] && '/Applications/ClawdPet.app/Contents/MacOS/ClawdPet' --hook; exit 0
+[ -x '/Applications/Wigglet.app/Contents/MacOS/Wigglet' ] && '/Applications/Wigglet.app/Contents/MacOS/Wigglet' --hook; exit 0
 ```
 
 The `exit 0` means a missing app never blocks Claude Code. Each entry has a 5-second timeout. Code: `HookInstaller` in [`app/Sources/Hooks.swift`](../app/Sources/Hooks.swift).
@@ -16,11 +16,11 @@ The hook is registered for these events:
 
 `SessionStart` `SessionEnd` `UserPromptSubmit` `PreToolUse` `PostToolUse` `PostToolUseFailure` `Notification` `Stop` `StopFailure` `SubagentStart` `SubagentStop` `PreCompact` `PostCompact` `PermissionDenied`
 
-`PreToolUse`, `PostToolUse` and `PostToolUseFailure` use the matcher `*`. Before saving, the installer removes any older Clawd Pet entries, so connecting twice never stacks duplicates. The first time it changes the file, it copies the original to `settings.json.clawd-backup`.
+`PreToolUse`, `PostToolUse` and `PostToolUseFailure` use the matcher `*`. Before saving, the installer removes any older Wigglet entries, so connecting twice never stacks duplicates. The first time it changes the file, it copies the original to `settings.json.wigglet-backup`.
 
 ## 2. One JSON file per session
 
-`ClawdPet --hook` reads the event from stdin and rewrites `~/.claude/clawd/sessions/<session id>.json`. `SessionEnd` deletes that session's file.
+`Wigglet --hook` reads the event from stdin and rewrites `~/.claude/wigglet/sessions/<session id>.json`. `SessionEnd` deletes that session's file.
 
 | Field | What it holds |
 |---|---|
@@ -64,7 +64,7 @@ The full table, with triggers and timings, is in [ANIMATIONS.md](ANIMATIONS.md).
 
 ## 5. The team panel
 
-Sessions waiting on you are listed first. Up to six Clawds are drawn side by side, and any more show as a `+N` badge. With two or more sessions, each Clawd wears a scarf whose colour comes from its project name. The menu-bar icon shows the number of waiting sessions.
+Sessions waiting on you are listed first. Up to six Wigglets are drawn side by side, and any more show as a `+N` badge. With two or more sessions, each Wigglet wears a scarf whose colour comes from its project name. The menu-bar icon shows the number of waiting sessions.
 
 ## 6. Hover card and Jump
 
@@ -83,4 +83,4 @@ The hover card reads the newest assistant message from the session's transcript:
 
 ## Cursor agents
 
-Cursor has its own hooks (`~/.cursor/hooks.json`) with session, tool and stop events, a `conversation_id` and a `transcript_path`, so a connector that writes the same session files looks possible. It isn't built: it hasn't been checked against a real Cursor capture yet, and the event list differs between Cursor versions. Sessions from Cursor's agent don't appear in Clawd Pet today.
+Cursor has its own hooks (`~/.cursor/hooks.json`) with session, tool and stop events, a `conversation_id` and a `transcript_path`, so a connector that writes the same session files looks possible. It isn't built: it hasn't been checked against a real Cursor capture yet, and the event list differs between Cursor versions. Sessions from Cursor's agent don't appear in Wigglet today.
