@@ -1,0 +1,32 @@
+# Contributing
+
+Thanks for helping. Small, focused pull requests are easiest to review.
+
+## Build and check
+
+```sh
+cd app && ./build.sh                                                    # universal ClawdPet.app
+cd .. && HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --selftest     # run from the repo root
+HOME=$(mktemp -d) app/ClawdPet.app/Contents/MacOS/ClawdPet --pixel-audit           # every clip on the cell grid
+```
+
+Always use a throwaway `HOME` for test flags, so nothing touches your real `~/.claude`.
+
+Useful flags: `--gallery` plays every clip, `--demo-team N` writes N fake sessions, and `--dump-catalog` prints the animation table.
+
+## Proposing an animation
+
+1. Open a **feature request** with the trigger (which hook event, tool or command) and a rough storyboard.
+2. Add the clip to `AnimationCatalog.all` with an honest `status`: `needs-verify` until a recorded payload in `fixtures/` exercises it.
+3. Draw it in `Renderer` (`app/Sources/Sprite.swift`).
+4. Run `--pixel-audit`, then `python3 docs/assets/build/render.py` to regenerate `docs/ANIMATIONS.md` and the images.
+
+## Pixel rules
+
+- Whole cells only: integer positions and sizes, no rotation, no scaling, no anti-aliasing.
+- Don't change Clawd's silhouette, proportions or colours (`#D97757` body, `#BE684B` shade). New work goes into poses, props, effects and timing.
+- Props use their own palette, so they never blend into the orange body.
+
+## Commits
+
+Describe what changed and why. Never commit secrets, `.env` files or paths from your own machine.

@@ -1,0 +1,20 @@
+name: Feature or animation request
+description: Suggest a feature or a new animation
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+    validations:
+      required: true
+  - type: textarea
+    id: trigger
+    attributes:
+      label: For an animation, what triggers it?
+      description: A hook event, tool, command or timing. Example — "a git push that runs for over 10 seconds".
+  - type: textarea
+    id: storyboard
+    attributes:
+      label: Storyboard (optional)
+      description: A few words or a sketch of the poses and props.

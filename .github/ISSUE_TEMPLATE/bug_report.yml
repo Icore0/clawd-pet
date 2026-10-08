@@ -1,0 +1,48 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start two Claude Code sessions
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Clawd Pet version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and chip
+      placeholder: "macOS 15.1, Apple M2"
+    validations:
+      required: true
+  - type: textarea
+    id: session
+    attributes:
+      label: Session file (optional)
+      description: Contents of the relevant ~/.claude/clawd/sessions/*.json. Remove any paths you don't want to share.
+      render: json
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The menu-bar icon says "Connected to Claude Code".
+        - label: I removed personal paths, keys and tokens from this report.
+          required: true
