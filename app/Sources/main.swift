@@ -108,7 +108,10 @@ if CommandLine.arguments.contains("--selftest") {
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         let old: [String: Any] = ["hooks": ["Stop": [["hooks": [["type": "command", "command": "/Applications/ClawdPet.app/Contents/MacOS/ClawdPet --hook"]]]]], "keep": true]
         try JSONSerialization.data(withJSONObject: old).write(to: URL(fileURLWithPath: settingsPath))
+        // Hooks for an older copy are not "connected": the UI must offer Reconnect.
+        if HookInstaller.isInstalled || !HookInstaller.isStale { print("stale hooks"); exit(1) }
         try HookInstaller.install()
+        if HookInstaller.isStale { print("still stale"); exit(1) }
         guard HookInstaller.isInstalled, let s = HookInstaller.load(), let hooks = s["hooks"] as? [String: Any],
               let stop = hooks["Stop"] as? [[String: Any]], stop.count == 1, s["keep"] as? Bool == true else { print("connect"); exit(1) }
         try HookInstaller.remove()
@@ -718,7 +721,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = add("Ask \(PRODUCT_NAME)…   ⌃⌥Space", #selector(menuChat))
         m.addItem(.separator())
         let connected = HookInstaller.isInstalled
-        _ = add(connected ? "Connected to Claude Code" : "Connect to Claude Code…", #selector(connectAction), on: connected)
+        _ = add(connected ? "Connected to Claude Code" : (HookInstaller.isStale ? "Reconnect to Claude Code…" : "Connect to Claude Code…"), #selector(connectAction), on: connected)
         _ = add("Disconnect and remove hooks", #selector(disconnectAction))
         _ = add("Chat settings…", #selector(aiSettings))
         _ = add("Play sounds", #selector(toggleSounds), on: soundsOn)

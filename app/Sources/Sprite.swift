@@ -628,7 +628,8 @@ struct Renderer {
         }
         let say = say ?? m.say
         let project = project ?? m.project
-        let delta = delta ?? m.delta
+        var delta = delta ?? m.delta
+        if delta == "+0 −0" || delta == "+0" { delta = "" }
         let detail = say + (delta.isEmpty ? "" : "  " + delta)
         if text.isEmpty {
         if !m.demo.isEmpty { text = b }
@@ -652,6 +653,10 @@ struct Renderer {
         if text.isEmpty { return }
         if text.count > 38 { text = String(text.prefix(37)) + "…" }
         if sub.count > 44 { sub = String(sub.prefix(43)) + "…" }
+        // Fit the panel: a lone Wigglet's panel is narrow, so shorten rather than clip at the edge.
+        let room = Double(size.width) - 30
+        while text.count > 4 && m.labels.width(string: text, size: 12, weight: .semibold) > room { text = String(text.dropLast(2)) + "…" }
+        while sub.count > 4 && m.labels.width(string: sub, size: 10, weight: .medium) > room { sub = String(sub.dropLast(2)) + "…" }
         let pop = min(1, now.timeIntervalSince(since) / 0.18)
         let main = m.labels.image(string: text, size: 12, weight: .semibold, color: .white)
         let subR = m.labels.image(string: sub, size: 10, weight: .medium, color: NSColor.white.withAlphaComponent(0.6))

@@ -284,12 +284,15 @@ enum HookInstaller {
             if kept.isEmpty { hooks.removeValue(forKey: ev) } else { hooks[ev] = kept }
         }
     }
-    static var isInstalled: Bool {
-        guard let s = load(), let hooks = s["hooks"] as? [String: Any] else { return false }
-        return hooks.values.contains { v in
-            ((v as? [[String: Any]]) ?? []).contains { g in ((g["hooks"] as? [[String: Any]]) ?? []).contains { isOurs(($0["command"] as? String) ?? "") } }
-        }
+    /// Every hook command in settings.json.
+    static var commands: [String] {
+        guard let s = load(), let hooks = s["hooks"] as? [String: Any] else { return [] }
+        return hooks.values.flatMap { v in ((v as? [[String: Any]]) ?? []).flatMap { g in ((g["hooks"] as? [[String: Any]]) ?? []).compactMap { $0["command"] as? String } } }
     }
+    /// Connected means the hooks run *this* copy of the app. Hooks left by an older build or a moved copy don't count.
+    static var isInstalled: Bool { commands.contains(command) }
+    /// Our hooks exist but point somewhere else (an older build, Clawd Pet, a moved app): Reconnect fixes them.
+    static var isStale: Bool { !isInstalled && commands.contains { isOurs($0) } }
     static func install() throws {
         guard var s = load() else { throw NSError(domain: PRODUCT_NAME, code: 1, userInfo: [NSLocalizedDescriptionKey: "~/.claude/settings.json isn't valid JSON, so I left it alone."]) }
         var hooks = (s["hooks"] as? [String: Any]) ?? [:]

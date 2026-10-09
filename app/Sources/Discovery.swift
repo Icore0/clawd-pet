@@ -14,9 +14,9 @@ struct Discovered {
 
 /// How long a session can sit untouched before it leaves the team. Minutes; 0 means never.
 enum HideAfter {
-    static let options: [(Int, String)] = [(30, "30m"), (60, "1h"), (180, "3h"), (480, "8h"), (1440, "1d")]
+    static let options: [(Int, String)] = [(10, "10m"), (30, "30m"), (60, "1h"), (180, "3h"), (1440, "1d")]
     static var minutes: Int {
-        get { let v = UserDefaults.standard.integer(forKey: "hideAfter"); return v == 0 ? 180 : v }
+        get { let v = UserDefaults.standard.integer(forKey: "hideAfter"); return v == 0 ? 10 : v }
         set { UserDefaults.standard.set(newValue, forKey: "hideAfter") }
     }
     static var ms: Double { Double(minutes) * 60_000 }

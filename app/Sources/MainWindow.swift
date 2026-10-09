@@ -176,7 +176,7 @@ struct Sidebar: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Rectangle().fill(state.connected ? W.ok : W.clay).frame(width: 7, height: 7)
-                    MonoLabel(text: state.connected ? "Connected" : "Not connected", color: state.connected ? W.ink2 : W.clay, size: 10.5)
+                    MonoLabel(text: state.connected ? "Connected" : (HookInstaller.isStale ? "Reconnect" : "Not connected"), color: state.connected ? W.ink2 : W.clay, size: 10.5)
                 }
                 MonoLabel(text: "Unofficial fan project", color: W.ink4, size: 9.5)
             }
@@ -231,10 +231,11 @@ struct HomePane: View {
             }
             WRow(number: "02", title: "Connect to Claude Code",
                  detail: state.connected ? "Hooks are in ~/.claude/settings.json. The original was backed up first."
-                    : "Adds a few hook entries to ~/.claude/settings.json and saves a backup beside it. Replaces hooks left by older builds.") {
+                    : (HookInstaller.isStale ? "Your hooks still point at an older copy of Wigglet, so no activity reaches this one. Reconnect to fix it."
+                       : "Adds a few hook entries to ~/.claude/settings.json and saves a backup beside it. Replaces hooks left by older builds.")) {
                 HStack(spacing: 10) {
                     if !state.connected {
-                        Button("Connect") { state.connect() }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.translocated)
+                        Button(HookInstaller.isStale ? "Reconnect" : "Connect") { state.connect() }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.translocated)
                     }
                     status(state.connected)
                 }
@@ -397,13 +398,14 @@ struct SettingsPane: View {
 
             group("Claude Code")
             Hairline(strong: true)
-            WRow(title: state.connected ? "Connected" : "Not connected",
-                 detail: state.connected ? "Hooks live in ~/.claude/settings.json." : "Wigglet can't see your sessions until it's connected.") {
+            WRow(title: state.connected ? "Connected" : (HookInstaller.isStale ? "Needs reconnecting" : "Not connected"),
+                 detail: state.connected ? "Hooks live in ~/.claude/settings.json."
+                    : (HookInstaller.isStale ? "The hooks point at an older copy of Wigglet. Reconnect so this one gets the activity." : "Wigglet can't see your sessions until it's connected.")) {
                 HStack(spacing: 10) {
                     Button("Show file") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: settingsPath)]) }
                         .buttonStyle(WButton(kind: .line, small: true))
                     if state.connected { Button("Disconnect") { state.disconnect() }.buttonStyle(WButton(kind: .line, small: true)) }
-                    else { Button("Connect") { state.connect() }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.translocated) }
+                    else { Button(HookInstaller.isStale ? "Reconnect" : "Connect") { state.connect() }.buttonStyle(WButton(kind: .solid, small: true)).disabled(state.translocated) }
                 }
             }
             if !state.connectError.isEmpty { Text(state.connectError).font(W.sans(12)).foregroundStyle(W.clay).padding(.vertical, 6) }
@@ -533,8 +535,8 @@ struct AboutPane: View {
                     .buttonStyle(WButton(kind: .line, small: true))
             }
             WRow(title: "License", detail: "Source available. All rights reserved until a license is announced.") { EmptyView() }
-            Text("Unofficial fan project, not affiliated with Anthropic. The pixel mascot design belongs to Anthropic.")
-                .font(W.sans(12)).foregroundStyle(W.ink4).padding(.top, 24)
+            Text("Credits: Claude, Claude Code and the original mascot design are by Anthropic. Wigglet is an unofficial fan tribute, not affiliated with, sponsored by, or endorsed by Anthropic. \"Claude\" and \"Anthropic\" are trademarks of Anthropic, PBC. Free, no ads, no data collection.")
+                .font(W.sans(12)).foregroundStyle(W.ink4).padding(.top, 24).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

@@ -4,6 +4,16 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-09
+
+### Fixed
+- Hooks left by an older copy of Wigglet (or Clawd Pet) counted as "connected", so no activity reached the app and Wigglets stood still. The app now checks the hooks run this copy and shows **Reconnect** when they don't.
+- Sessions you're not using leave sooner: **Hide sessions untouched for** now defaults to 10 minutes (10m / 30m / 1h / 3h / 1d). A session waiting on you never hides, and an ended session no longer comes back from its transcript.
+- Speech bubbles shorten to fit instead of being cut off, and empty line counts ("+0 −0") are hidden.
+
+### Added
+- Credits to Anthropic in the app, README and website, plus [TRADEMARKS.md](TRADEMARKS.md) with our good-faith promise to Anthropic.
+
 ## [1.0.0] - 2026-10-09
 
 First public release. It includes everything below.

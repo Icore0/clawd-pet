@@ -159,6 +159,7 @@ final class PetModel: ObservableObject {
         let files = (try? fm.contentsOfDirectory(atPath: sessionsDir)) ?? []
         var parsed: [String: SessionPet] = [:]
         var fileMood: [String: String] = [:]
+        var ended = Set<String>()
         for f in files where f.hasSuffix(".json") {
             let path = sessionsDir + "/" + f
             guard let data = fm.contents(atPath: path),
@@ -166,8 +167,11 @@ final class PetModel: ObservableObject {
             let ts = (o["ts"] as? NSNumber)?.doubleValue ?? 0
             if now - ts > 86_400_000 { try? fm.removeItem(atPath: path); continue }
             let sid = (o["sid"] as? String) ?? String(f.dropLast(5))
-            if now - ts > HideAfter.ms { continue }
             let storedMood = (o["mood"] as? String) ?? "idle"
+            // An ended session waves goodbye, then leaves for good (its transcript won't bring it back).
+            if storedMood == "bye" && now - ts > 3_000 { ended.insert(sid); continue }
+            // Untouched sessions leave the team; one that's waiting on you stays until you answer.
+            if now - ts > HideAfter.ms && storedMood != "waiting" { continue }
             fileMood[sid] = storedMood
             var mood = storedMood
             if mood == "working", now - ts > 900_000 { mood = "stalled" }
@@ -212,7 +216,7 @@ final class PetModel: ObservableObject {
                 tty: (o["tty"] as? String) ?? "",
                 lastNonIdle: lastNonIdle)
         }
-        for d in discovery.scan(maxAgeMs: HideAfter.ms) where parsed[d.sid] == nil {
+        for d in discovery.scan(maxAgeMs: HideAfter.ms) where parsed[d.sid] == nil && !ended.contains(d.sid) {
             let host = TranscriptDiscovery.host(for: d.entrypoint)
             let working = now - d.modified < 20_000
             let previous = sessions.first { $0.sid == d.sid }

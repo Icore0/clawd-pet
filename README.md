@@ -156,4 +156,8 @@ Click **Disconnect** in Settings, or use the menu-bar icon. Hooks you added your
 
 ---
 
-<sub>Unofficial fan project. Not affiliated with or endorsed by Anthropic. "Claude" and the pixel mascot design (Clawd) belong to Anthropic; Wigglet is the name of this app. Source available. All rights reserved until a license is announced.</sub>
+## Credits
+
+Wigglet is a fan tribute to the Claude mascot. **Claude**, **Claude Code** and the original mascot design are by **[Anthropic](https://www.anthropic.com)**. Thank you for building Claude Code and its hooks, which make Wigglet possible.
+
+<sub>Unofficial fan project. Not affiliated with, sponsored by, or endorsed by Anthropic. "Claude", "Claude Code" and "Anthropic" are trademarks of Anthropic, PBC, used here only to describe compatibility. Free, no ads, no data collection. Anthropic: if you'd like anything changed or removed, see [TRADEMARKS.md](TRADEMARKS.md) and we'll comply within 48 hours.</sub>
