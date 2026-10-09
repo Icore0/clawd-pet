@@ -35,4 +35,6 @@ The only network request the app makes is for chat:
 - In every case, when you open chat from a Wigglet, a short summary of that session is added: project, folder, current activity, recent action labels and counters.
 - **Transcript text** is never included, unless you turn on the hidden setting `defaults write dev.wigglet.app transcriptTail -bool true`. Then the last 20 lines of that session's transcript are added to the summary.
 
-If you never open chat, the app makes no network requests.
+Updates: every six hours the app asks `api.github.com` for this repository's latest release, and downloads it from GitHub if it's newer. The request carries only the app's version in its User-Agent.
+
+Apart from update checks, if you never open chat, the app makes no network requests.

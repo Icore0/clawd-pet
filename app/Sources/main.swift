@@ -14,6 +14,7 @@ if CommandLine.arguments.contains("--pixel-audit") {
     exit(runPixelAudit())
 }
 if CommandLine.arguments.contains("--hook") { runHookMode() }
+if CommandLine.arguments.contains("--gen-update-key") || CommandLine.arguments.contains("--sign-update") { runUpdateKeyTool(CommandLine.arguments) }
 // Prints where the calling shell's session would be recorded as running (same walk the hook does).
 if CommandLine.arguments.contains("--host-probe") {
     let h = findHost()
@@ -73,6 +74,10 @@ if CommandLine.arguments.contains("--selftest") {
         exit(1)
     }
     if let problem = AnimationCatalog.runChecks() {
+        print(problem)
+        exit(1)
+    }
+    if let problem = Updater.selfCheck() {
         print(problem)
         exit(1)
     }
@@ -380,6 +385,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = PetModel()
     let clock = FrameClock()
     let chat = ChatModel()
+    let updater = Updater.shared
     var panel: NSPanel!
     var chatPanel: ChatPanel!
     var chatHost: NSHostingView<ChatView>!
@@ -529,6 +535,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showMain(.home)
         }
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.appState.refresh() }
+        // Update checks only run for a real install, never under a test HOME unless a test feed is set.
+        if !testHome || ProcessInfo.processInfo.environment["WIGGLET_UPDATE_FEED"] != nil {
+            updater.onChange = { [weak self] in self?.rebuildMenu() }
+            updater.start()
+        }
     }
 
     // MARK: positioning
@@ -698,10 +709,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = add("Launch at login", #selector(toggleLogin), on: login)
         _ = add("Reset position", #selector(resetAction))
         m.addItem(.separator())
+        if case .available(let v) = updater.state { _ = add("Update to \(v)…", #selector(installUpdate)) }
+        else { _ = add("Check for Updates…", #selector(checkUpdates)) }
         _ = add("Quit \(PRODUCT_NAME)", #selector(quit), key: "q")
         return m
     }
     @objc func menuChat() { openChat() }
+    @objc func checkUpdates() { updater.check(manual: true); showMain(.settings) }
+    @objc func installUpdate() { updater.install() }
     @objc func resetAction() { resetPosition() }
     @objc func toggleSounds() { soundsOn.toggle(); item.menu = buildMenu() }
     @objc func toggleLatest() { model.showLatest.toggle(); if !model.showLatest { watcher.stop() }; item.menu = buildMenu() }

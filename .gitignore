@@ -16,3 +16,5 @@ mascot/CLAWD-SPEC.md
 tools/extract_official_frames.swift
 OPUS_PROMPT*.md
 !docs/assets/build/
+app/*.sig
+app/SHA256SUMS.txt

@@ -10,4 +10,8 @@ cp -R Wigglet.app "$stage/"
 ln -s /Applications "$stage/Applications"
 hdiutil create -volname "Wigglet" -srcfolder "$stage" -ov -format UDZO Wigglet.dmg
 rm -rf "$stage"
-echo "wrote $PWD/Wigglet.zip and $PWD/Wigglet.dmg"
+# Updates install only if this signature verifies against the public key in Updater.swift.
+# The private key stays in the login Keychain (item "wigglet-release-key").
+security find-generic-password -s wigglet-release-key -a ed25519 -w | Wigglet.app/Contents/MacOS/Wigglet --sign-update Wigglet.zip > Wigglet.zip.sig
+shasum -a 256 Wigglet.zip Wigglet.dmg > SHA256SUMS.txt
+echo "wrote $PWD/Wigglet.zip, Wigglet.zip.sig, Wigglet.dmg and SHA256SUMS.txt (version $(cat VERSION))"

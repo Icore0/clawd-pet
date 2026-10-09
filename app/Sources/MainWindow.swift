@@ -420,6 +420,10 @@ struct SettingsPane: View {
                 Button("Reset") { state.delegate?.resetPosition() }.buttonStyle(WButton(kind: .line, small: true))
             }
 
+            group("Updates")
+            Hairline(strong: true)
+            UpdateRows()
+
             group("Startup")
             Hairline(strong: true)
             WRow(title: "Open at login", detail: "Wigglet starts with your Mac.") {
@@ -475,6 +479,23 @@ func activeAgo(_ ts: Double) -> String {
     let m = Int((Date().timeIntervalSince1970 * 1000 - ts) / 60_000)
     if m < 1 { return "active now" }
     return m < 60 ? "active \(m)m ago" : "active \(m / 60)h ago"
+}
+
+/// Updates arrive only when a new version is published on GitHub, and only if its signature checks out.
+struct UpdateRows: View {
+    @ObservedObject var updater = Updater.shared
+    var body: some View {
+        WRow(title: "Version \(Updater.current)", detail: updater.label) {
+            switch updater.state {
+            case .available: Button("Update now") { updater.install() }.buttonStyle(WButton(kind: .clay, small: true))
+            case .checking, .installing: ProgressView().controlSize(.small).tint(W.clay)
+            default: Button("Check now") { updater.check(manual: true) }.buttonStyle(WButton(kind: .line, small: true))
+            }
+        }
+        WRow(title: "Install updates automatically", detail: "New versions install and Wigglet reopens by itself. Off: you'll see an Update button here and in the menu.") {
+            SquareToggle(isOn: Binding(get: { Updater.auto }, set: { Updater.auto = $0; updater.objectWillChange.send() }), label: "Install updates automatically")
+        }
+    }
 }
 
 // MARK: About

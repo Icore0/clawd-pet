@@ -58,7 +58,8 @@ Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is g
 | **80+ pixel animations** | Hand-timed 12 fps frames: a deploy rocket, a tea break on long commands, a check mark when tests pass, high-fives and pass-the-parcel between sessions. |
 | **Live hover card** | Hover over a Wigglet: project, turn timer, last actions and the session's latest message as it arrives. **Jump** takes you to that session's window. |
 | **Chat with Claude** | Click a Wigglet or press <kbd>⌃⌥Space</kbd>. Uses your Claude Code login by default, or your own Anthropic, OpenAI, OpenRouter or Gemini key, or a local Ollama model. Keys live in the macOS Keychain. |
-| **Private by default** | No accounts and no analytics. Nothing goes over the network unless you chat. |
+| **Private by default** | No accounts and no analytics. The network is used only for chat and signed updates. |
+| **Signed updates** | New versions arrive only when they are published, and install only if their signature checks out. |
 
 <p align="center"><img src="docs/assets/hover-card.png" width="400" alt="Hover card for the api session: working for 4:12, 23 tools, the latest message from Claude, a Jump button and the last four actions">
 <br><sub>The hover card, rendered offscreen from the app's own view with a demo session.</sub></p>
@@ -84,7 +85,7 @@ Claude Code runs `Wigglet --hook` on session and tool events. The hook updates o
 - **Stored:** tool names, file base names, the short description Claude writes for each command, the session's folder, which app it runs in (for Jump), and counters. Everything stays in `~/.claude/wigglet/sessions/`.
 - **Shown, never stored:** the hover card reads the session's latest message from its local transcript to display it. It's never written to a file or sent anywhere. Turn it off in the menu.
 - **Never stored:** file contents or full commands.
-- **Network:** only for chat, and only to the provider you pick. The default runs your local `claude` CLI with no tools, so it can't read or change files.
+- **Network:** an update check against GitHub Releases every six hours, and chat, only to the provider you pick. The default runs your local `claude` CLI with no tools, so it can't read or change files.
 - **Keys:** stored in the macOS Keychain (this Mac only), never in a file.
 
 The full list is in [docs/PRIVACY.md](docs/PRIVACY.md).

@@ -6,6 +6,7 @@ BINARY_NAME=Wigglet
 BUNDLE_ID=dev.wigglet.app
 PRODUCT_SLUG=wigglet
 cd "$(dirname "$0")"
+VERSION="${VERSION:-$(cat VERSION)}"   # VERSION=1.0.1 ./build.sh overrides (used by the update test)
 A=$BINARY_NAME.app
 rm -rf $A build && mkdir -p $A/Contents/MacOS build
 cat > Sources/Product.swift <<EOF
@@ -29,8 +30,8 @@ cat > $A/Contents/Info.plist <<P
 <key>CFBundleName</key><string>$PRODUCT_NAME</string>
 <key>CFBundleDisplayName</key><string>$PRODUCT_NAME</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.0.0</string>
-<key>CFBundleVersion</key><string>1.0.0</string>
+<key>CFBundleShortVersionString</key><string>$VERSION</string>
+<key>CFBundleVersion</key><string>$VERSION</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSUIElement</key><false/>
 <key>NSAppleEventsUsageDescription</key><string>Jump to session selects the Terminal or iTerm2 tab where that Claude Code session runs.</string>

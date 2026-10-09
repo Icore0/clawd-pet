@@ -12,16 +12,29 @@ git add -A docs README.md CHANGELOG.md && git commit -m "Refresh docs and assets
 
 Then update the counts in README.md and docs/REPO_SETUP.md if the number of clips crossed a round number. `docs/ANIMATIONS.md` states the exact count.
 
-## Releasing v1.0.0 (only after the owner confirms the build is final)
+## Releasing (only after the owner confirms the build is final)
+
+Users stay on the version they have until a release is **published** on GitHub. Building, committing and pushing never reaches them. Drafts and pre-releases don't either (the app reads `releases/latest`).
 
 ```sh
-cd app && ./package.sh && cd ..                       # Wigglet.zip + Wigglet.dmg
-cd app && shasum -a 256 Wigglet.zip Wigglet.dmg > SHA256SUMS.txt && cd ..
-# README: replace the "First release lands today" note with the download link; CHANGELOG: set the date
-git tag v1.0.0 && git push origin main v1.0.0
-gh release create v1.0.0 app/Wigglet.zip app/Wigglet.dmg app/SHA256SUMS.txt \
-  --title "Wigglet 1.0.0" --notes-file docs/RELEASE_NOTES_1.0.0.md
+V=1.1.0
+echo $V > app/VERSION                                  # 1. bump the version
+cd app && ./package.sh && cd ..                        # 2. Wigglet.zip, Wigglet.zip.sig, Wigglet.dmg, SHA256SUMS.txt
+# 3. CHANGELOG: move Unreleased under [$V] with today's date; write docs/RELEASE_NOTES_$V.md
+git commit -am "Release $V" && git tag v$V && git push origin main v$V
+gh release create v$V app/Wigglet.zip app/Wigglet.zip.sig app/Wigglet.dmg app/SHA256SUMS.txt \
+  --title "Wigglet $V" --notes-file docs/RELEASE_NOTES_$V.md   # 4. this is the moment everyone gets it
 ```
+
+Within six hours every running copy sees the release, checks `Wigglet.zip.sig` against the public key built into the app, and installs it (or shows **Update now** if the user turned automatic updates off).
+
+**The signing key.** `package.sh` signs with the Ed25519 private key in the login Keychain, item `wigglet-release-key`. It never goes in the repo. Back it up somewhere safe (a password manager):
+
+```sh
+security find-generic-password -s wigglet-release-key -a ed25519 -w    # prints the private key; store it, don't paste it anywhere public
+```
+
+If it's lost, installed copies can't verify new releases and users would have to download the next version by hand. To restore it on another Mac: `security add-generic-password -s wigglet-release-key -a ed25519 -w '<key>'`.
 
 ## How the images are made
 

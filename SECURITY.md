@@ -18,4 +18,5 @@ Areas that matter most:
 - The hook command quotes the app path for `sh`; AppleScript only ever sees a terminal device name that matches `/dev/ttysNNN`.
 - Chat runs `claude` with an argument array (no shell), no tools and no MCP servers.
 - API endpoints are fixed. A test override only works when `HOME` is a temporary folder.
+- Updates install only from published GitHub Releases and only when `Wigglet.zip.sig` verifies against the Ed25519 public key in `Updater.swift`. The private key never leaves the maintainer's Keychain.
 - CI actions are pinned to commit SHAs, the workflow token is read-only, and only GitHub-owned actions may run.

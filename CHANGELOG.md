@@ -5,6 +5,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ## [Unreleased]
 
 ### Added
+- Updates: Wigglet checks GitHub Releases every six hours and installs a new version only once it's published and its Ed25519 signature checks out. **Install updates automatically** (on by default) and **Check now** are in Settings; **Check for Updates…** is in the menu.
 - Finds sessions that were already open: recent transcripts in `~/.claude/projects/` show up without waiting for a hook. Setup step 3 completes as soon as one is found.
 - **Hide sessions untouched for** 30m / 1h / 3h / 8h / 1d (default 3h). The Sessions list is sorted by most recent and shows when each was last active.
 - **One Wigglet** mode: one character for every session, with a hover card that lists them all.
