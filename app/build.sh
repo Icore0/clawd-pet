@@ -19,7 +19,7 @@ for ARCH in arm64 x86_64; do
 done
 lipo -create build/$BINARY_NAME-arm64 build/$BINARY_NAME-x86_64 -output $A/Contents/MacOS/$BINARY_NAME
 strip -S $A/Contents/MacOS/$BINARY_NAME
-mkdir -p $A/Contents/Resources && cp Resources/AppIcon.icns $A/Contents/Resources/ 2>/dev/null || true
+mkdir -p $A/Contents/Resources && cp Resources/AppIcon.icns Resources/Mascot.png $A/Contents/Resources/ 2>/dev/null || true
 cat > $A/Contents/Info.plist <<P
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

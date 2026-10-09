@@ -40,7 +40,7 @@ Status `needs-verify` means the trigger is implemented but no recorded hook payl
 | testFail | testFail | a test command failed, first 2.5s | 50 | 2.5 | no | x |  | done | anticipation 0.2, action 2.0, settle 0.3 |
 | handoff | handoff | a sub-agent started, first 2.5s | 40 | 3.0 | no | parcel |  | done | anticipation 0.2, action 2.5, settle 0.3 |
 | grind | grind | working turn longer than 20 min, 3s every 5 min | 40 | 3.5 | no |  |  | done | anticipation 0.2, action 3.0, settle 0.3 |
-| deploy | deploy | command vercel, netlify, fly deploy, npm publish, or docker push | 30 | 5.0 | yes | mark |  | done | anticipation 0.45, action 4.0, settle 0.55 |
+| deploy | deploy | command vercel, netlify, fly deploy, npm publish, or docker push | 30 | 7.0 | yes | mark |  | done | anticipation 0.45, action 6.0, settle 0.55 |
 | push | push | command git push | 30 | 3.5 | yes | plane |  | done | anticipation 0.2, action 3.0, settle 0.3 |
 | pull | pull | command git pull or git fetch | 30 | 3.83 | yes | parcel |  | done | anticipation 0.2, action 3.33, settle 0.3 |
 | webSearch | webSearch | WebSearch | 30 | 2.5 | yes | glass |  | done | anticipation 0.2, action 2.0, settle 0.3 |

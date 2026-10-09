@@ -25,12 +25,16 @@ struct ClipData {
     var maxDelta = 90
     /// Tween the last key into the first (looping clips).
     var loops = true
+    /// After the first pass a looping clip repeats from this frame (an intro such as a countdown plays once).
+    var loopFrom = 0
 
     var frameCount: Int { keys.reduce(0) { $0 + $1.hold } }
 
     func index(_ frame: Int, loop: Bool) -> Int {
         let n = max(1, frameCount)
-        return loop ? ((frame % n) + n) % n : min(max(0, frame), n - 1)
+        if !loop { return min(max(0, frame), n - 1) }
+        if frame < n || loopFrom <= 0 || loopFrom >= n { return ((frame % n) + n) % n }
+        return loopFrom + (frame - loopFrom) % (n - loopFrom)
     }
 
     /// Every frame, with in-betweens.
@@ -165,18 +169,20 @@ enum AnimationData {
         let point = P { $0.armRY = -9; $0.armRX = -1; $0.lookX = 1; $0.lookY = -1 }
         c["git"] = ClipData(keys: [K(18, point), K(2, point.with { $0.lift = 1 }), K(16, point)])
 
-        // A box drops into the hands, opens, and its contents sparkle away.
+        // A parcel drops into the box in Wigglet's hands, the box shakes while it installs, then opens with a check.
         let catchBox = P { $0.armLX = 4; $0.armLY = 5; $0.armRX = 4; $0.armRY = 5 }
         c["install"] = ClipData(keys: [
-            K(8, catchBox.with { $0.lookY = -1 }), K(2, catchBox.with { $0.squash = 1; $0.eyes = .closed }, cut: true),
-            K(10, catchBox.with { $0.lookY = 1; $0.mouth = .smile }), K(14, catchBox.with { $0.eyes = .happy; $0.mouth = .smile }),
-            K(6, Pose(), cut: true)], maxDelta: 150)
+            K(8, catchBox.with { $0.lookY = -1 }), K(2, catchBox.with { $0.squash = 1 }), K(2, catchBox),
+            K(2, catchBox.with { $0.lean = -1; $0.eyes = .closed }), K(2, catchBox.with { $0.lean = 1; $0.eyes = .closed }),
+            K(2, catchBox.with { $0.lean = -1; $0.eyes = .closed }), K(2, catchBox.with { $0.lean = 1; $0.eyes = .closed }),
+            K(4, catchBox), K(16, catchBox.with { $0.eyes = .happy; $0.mouth = .smile })], held: true)
 
         // Holds a rocket up, counts down, launches it and cheers.
         let rocket = P { $0.armRY = -9; $0.armRX = 0; $0.lookX = 1; $0.lookY = -1 }
+        let shade = P { $0.armRX = 5; $0.armRY = -3; $0.lookY = -1; $0.lookX = 1; $0.mouth = .smile }
         c["deploy"] = ClipData(keys: [
-            K(12, rocket), K(28, armsUp.with { $0.eyes = .happy; $0.mouth = .open; $0.lookY = -1 }, cut: true),
-            K(8, Pose(), cut: true)])
+            K(12, rocket), K(24, armsUp.with { $0.eyes = .happy; $0.mouth = .open; $0.lookY = -1 }, cut: true),
+            K(24, shade), K(1, shade.with { $0.eyes = .closed }), K(11, shade)], loops: false, loopFrom: 36)
 
         // Throws a paper plane up and to the right.
         c["push"] = ClipData(keys: [
@@ -230,9 +236,9 @@ enum AnimationData {
             K(12, P { $0.squash = 1; $0.eyes = .closed; $0.mouth = .flat })])
 
         // Waves a flag overhead to get attention.
-        let flag = P { $0.armRY = -9; $0.armRX = 0; $0.mouth = .open; $0.eyes = .tall }
+        let flag = P { $0.armRY = -9; $0.armRX = 3; $0.mouth = .open; $0.eyes = .tall }
         c["flag"] = ClipData(keys: [
-            K(6, flag), K(6, flag.with { $0.armRX = -2; $0.lift = 1 }), K(6, flag), K(6, flag.with { $0.armRX = 2; $0.lift = 1 })],
+            K(6, flag), K(6, flag.with { $0.armRX = 1; $0.lift = 1 }), K(6, flag), K(6, flag.with { $0.armRX = 5; $0.lift = 1 })],
             held: true, airborne: true)
 
         // ---------- waiting ----------
@@ -273,7 +279,7 @@ enum AnimationData {
 
         // Hands a parcel to a helper, who carries it off; then waves.
         c["handoff"] = ClipData(keys: [
-            K(8, holdFront.with { $0.lookX = 1 }), K(6, P { $0.armRX = -3; $0.armRY = 2; $0.armLX = 8; $0.armLY = 2; $0.lookX = 1 }),
+            K(8, holdFront.with { $0.lookX = 1 }), K(6, P { $0.armRX = 0; $0.armRY = 1; $0.lookX = 1 }),
             K(4, P { $0.lookX = 1; $0.mouth = .smile }), K(12, happy.with { $0.armRY = -9; $0.armRX = -1 })], maxDelta: 150, loops: false)
 
         // Two pages crash together.
@@ -348,7 +354,7 @@ enum AnimationData {
             K(4, P { $0.armRY = -6; $0.armRX = -2; $0.lookX = 1 }), K(2, happy.with { $0.armRY = -8; $0.armRX = -4; $0.lookX = 1 }, cut: true),
             K(12, happy.with { $0.armRY = -8; $0.armRX = -3; $0.lookX = 1 })], loops: false)
         c["parcel"] = ClipData(keys: [
-            K(8, holdFront.with { $0.lookX = 1 }), K(4, P { $0.armRX = -3; $0.armRY = 2; $0.armLX = 8; $0.armLY = 2; $0.lookX = 1 }),
+            K(8, holdFront.with { $0.lookX = 1 }), K(4, P { $0.armRX = 0; $0.armRY = -4; $0.lookX = 1; $0.lookY = -1 }),
             K(6, P { $0.lookX = 1 }), K(6, happy.with { $0.armRY = -9; $0.armRX = -1 })], maxDelta: 150, loops: false)
 
         // ---------- chat problems ----------

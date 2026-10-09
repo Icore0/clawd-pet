@@ -295,27 +295,35 @@ extension Renderer {
                 R(r.x + 8, r.y - 2, 3, 7, Pal.steel); R(r.x + 10, r.y - 2, 1, 7, Pal.steelDark)
             }
         case "install":
-            if frame < 34 {
-                let y = frame < 8 ? tp + 4 - (8 - frame) * 4 : tp + 4
-                drawBox(p, x: bx + 2, y: y, w: 12, h: 6)
-                if frame >= 20 {
-                    p.thick(bx + 2, y, bx - 1, y - 3, Pal.wood)
-                    p.thick(bx + 12, y, bx + 15, y - 3, Pal.wood)
-                }
+            // Box in the hands; a parcel drops in, the box closes and shakes, then opens.
+            let by = tp + 4 + (pose.squash > 0 ? 0 : 0)
+            drawBox(p, x: bx + 2, y: by, w: 12, h: 6)
+            let open = frame < 10 || frame >= 24
+            if open {
+                p.lineCells(bx + 2, by - 1, bx - 1, by - 3, Pal.woodDark); p.lineCells(bx + 13, by - 1, bx + 16, by - 3, Pal.woodDark)
+                R(bx + 3, by, 10, 1, Pal.woodDark)
+            }
+            if frame < 8 {
+                let y = by - 2 - (8 - frame) * 3
+                R(bx + 6, y, 4, 4, Pal.cyan); R(bx + 6, y, 4, 1, Pal.white)
             }
         case "deploy":
             if frame < 12 { drawRocket(p, cx: r.x + 2, y: r.y - 9, flame: false, wall: wall) }
-            else if frame < 40 {
+            else if frame < 36 {
                 let y = (tp - 14) - (frame - 12) * 3
                 if y > -60 { drawRocket(p, cx: bx + 18, y: y, flame: true, wall: wall) }
+            } else {
+                // Far away now: a dot with a blinking flame.
+                let k = (frame - 36) / 6
+                X(bx + 17 + k % 2, -18 - k, Pal.white); if wall % 2 == 0 { X(bx + 17 + k % 2, -17 - k, Pal.orange) }
             }
         case "push":
             if frame < 10 { p.bitmap(["....##.", "..####.", "#######", ".ooo..."], r.x - 2, r.y - 4, Pal.white, alt: Pal.paperShade) }
             else if frame < 28 {
                 let k = frame - 10
-                let x = bx + 16 + k * 2, y = tp - 8 - k * 2
+                let x = bx + 15 + k / 2, y = tp - 8 - k * 3
                 p.bitmap(["....##.", "..####.", "#######", ".ooo..."], x, y, Pal.white, alt: Pal.paperShade)
-                for d in 1...3 where k - d * 2 >= 0 { X(x - d * 4, y + 3 + d * 4, d == 1 ? Pal.white : Pal.smoke) }
+                for d in 1...3 where k - d * 2 >= 0 { X(x - d, y + 3 + d * 5, d == 1 ? Pal.white : Pal.smoke) }
             }
         case "pull":
             let landed = frame >= 24
@@ -341,7 +349,7 @@ extension Renderer {
             }
         case "handoff", "parcel":
             if frame < 8 { drawBox(p, x: bx + 4, y: tp + 4, w: 8, h: 6) }
-            else if frame < 14 { drawBox(p, x: r.x + 1, y: r.y - 4, w: 8, h: 6) }
+            else if frame < (name == "parcel" ? 12 : 14) { drawBox(p, x: r.x - 3, y: r.y - 5, w: 8, h: 6) }
         case "conflict":
             let shake = frame >= 10 && wall % 2 == 0 ? 1 : 0
             for h in [l, r] { R(h.x, h.y - 8 + shake, 5, 7, Pal.paper); R(h.x + 1, h.y - 6 + shake, 3, 1, Pal.line); R(h.x + 1, h.y - 4 + shake, 2, 1, Pal.line) }
@@ -532,8 +540,8 @@ extension Renderer {
             let level = (wall / 3) % 4
             for i in 0..<3 where i < level { p.ring(12, -1, 2 + i * 3, Pal.cyan, upper: true) }
         case "agent":
-            drawMini(p, x: -13, g: 16, hop: (wall / 3) % 2 == 0 ? 2 : 0, armsUp: (wall / 6) % 2 == 0)
-            drawMini(p, x: 25, g: 16, hop: (wall / 3) % 2 == 1 ? 2 : 0, armsUp: (wall / 6) % 2 == 1)
+            drawMini(p, x: -5, g: 17, hop: (wall / 3) % 2 == 0 ? 2 : 0, armsUp: (wall / 6) % 2 == 0)
+            drawMini(p, x: 17, g: 17, hop: (wall / 3) % 2 == 1 ? 2 : 0, armsUp: (wall / 6) % 2 == 1)
         case "git":
             let white = Pal.white, lit = Pal.orange
             p.rect(16, -15, 1, 11, white)
@@ -544,16 +552,13 @@ extension Renderer {
             if frame >= 22 { R(15, -16, 3, 3, Pal.green) }
         case "deploy":
             if frame < 12 { glyph(p, ["3", "2", "1"][min(2, frame / 4)], 5, -9, Pal.white) }
+            else if frame >= 36 && wall % 12 < 6 { p.px(4, -14, Pal.white); p.px(22, -20, Pal.white) }
             else if frame < 22 {
                 let k = frame - 12
                 for i in 0..<3 where k > i { p.circleCells(bx + 15 + i * 4 - 4, tp - 4 + k / 4, min(2, (k - i) / 3), Pal.smoke) }
             }
         case "install":
-            if frame >= 24 && frame < 34 {
-                let k = frame - 24
-                glyph(p, "spark", bx + 6, tp - 2 - k, Pal.yellow)
-                p.px(bx + 3, tp - k, Pal.cyan); p.px(bx + 13, tp - 1 - k, Pal.pink)
-            }
+            if frame >= 26 { glyph(p, "check", bx + 5, tp - 6 - min(4, (frame - 26) / 2), Pal.green) }
         case "pull":
             if frame < 24 && wall % 6 < 4 { glyph(p, "down", -1, -6, Pal.cyan) }
         case "done":
@@ -583,10 +588,17 @@ extension Renderer {
         case "dream":
             for (i, c) in [(15, -1, 1), (17, -4, 1)].enumerated() where (wall / 6 + i) % 3 != 0 { p.circleCells(c.0, c.1, c.2, Pal.white) }
             for c in [(8, -10, 4), (13, -12, 4), (18, -10, 4), (13, -8, 4)] { p.circleCells(c.0, c.1, c.2, Pal.white) }
-            glyph(p, wall % 12 < 6 ? "star" : "heart", wall % 12 < 6 ? 12 : 10, wall % 12 < 6 ? -12 : -13, wall % 12 < 6 ? Pal.yellow : Pal.pink)
+            switch (wall / 8) % 3 {
+            case 0: glyph(p, "star", 12, -12, Pal.yellow)
+            case 1: glyph(p, "heart", 10, -13, Pal.pink)
+            default:
+                // A gold coin with a dollar sign.
+                p.circleCells(13, -11, 3, Pal.yellow); p.ring(13, -11, 3, Pal.orange)
+                p.bitmap([".#.", "###", "#..", "###", "..#", "###", ".#."], 12, -14, Pal.orange)
+            }
         case "listen":
             let k = (wall / 3) % 3
-            for i in 0..<2 { let x = 30 - k - i * 3; R(x, -1 + i, 1, 6 - 2 * i, Pal.red.opacity(i == 0 ? 1 : 0.7)) }
+            for i in 0..<2 { let x = 28 - k - i * 2; R(x, -1 + i, 1, 6 - 2 * i, i == 0 ? Pal.red : Pal.pink) }
         case "chatTalk":
             if wall % 4 < 2 { R(bx + 17, tp + 5, 3, 1, Pal.white); R(bx + 17, tp + 8, 2, 1, Pal.white); p.px(bx + 18, tp + 3, Pal.white) }
         case "hum", "dance":
@@ -638,12 +650,21 @@ extension Renderer {
         case "hop":
             if frame < 2 { R(2, 15, 2, 1, Pal.smoke); R(20, 15, 2, 1, Pal.smoke) }
         case "handoff":
-            let walk = max(0, frame - 18)
-            let mx = 25 + walk
-            if frame < 30 { drawMini(p, x: mx, g: 16, hop: walk % 4 < 2 && walk > 0 ? 1 : 0, armsUp: frame >= 14) }
-            if frame >= 14 && frame < 30 { drawBox(p, x: mx + 2, y: 3 - (walk % 4 < 2 && walk > 0 ? 1 : 0), w: 8, h: 5) }
+            // A helper pops in beside Wigglet, takes the parcel on its head, hops twice and fades out.
+            let fadeIn = max(0, 3 - frame / 2), fadeOut = frame >= 24 ? min(4, (frame - 24) / 2 + 1) : 0
+            let hop = frame >= 18 && frame < 24 && (frame / 2) % 2 == 0 ? 2 : 0
+            p.fade = max(fadeIn, fadeOut)
+            drawMini(p, x: 17, g: 16, hop: hop, armsUp: frame >= 14)
+            if frame >= 14 { drawBox(p, x: 19, y: 3 - hop, w: 8, h: 5) }
+            p.fade = 0
         case "parcel":
-            if frame >= 14 && frame < 24 { drawBox(p, x: 26 + (frame - 14) * 2, y: 10, w: 8, h: 6) }
+            // Tossed up and over to the next Wigglet, fading as it leaves.
+            if frame >= 12 && frame < 24 {
+                let k = frame - 12
+                p.fade = min(4, max(0, (k - 6) / 2))
+                drawBox(p, x: 18 + k, y: tp - 6 - (12 * k - k * k) / 3, w: 8, h: 6)
+                p.fade = 0
+            }
         case "offline":
             for rad in [2, 5, 8] { p.ring(19, -2, rad, Pal.white, upper: true) }
             p.rect(18, -3, 2, 2, Pal.white)
@@ -669,7 +690,7 @@ extension Renderer {
         let ca = now.timeIntervalSince(m.clickAt)
         if let session, ca >= 0, ca < 1.6, session.sid == m.clickSid { glyph(p, "heart", 8, -4 - Int(ca * 8), Pal.pink) }
         // A helper per running sub-agent (the label shows the rest).
-        if let n = session?.subagentCount, n > 0, b != "agent", b != "handoff" { drawMini(p, x: 25, g: 16) }
+        if let n = session?.subagentCount, n > 0, b != "agent", b != "handoff" { drawMini(p, x: 17, g: 17) }
     }
 
     /// One glyph from a list of choices (used for countdown digits).
@@ -704,12 +725,13 @@ func runAscii(_ id: String, _ f: Int) -> Int32 {
     return 0
 }
 
-func runSheet(_ dir: String) -> Int32 {
+func runSheet(_ dir: String, only: String? = nil) -> Int32 {
     let r = Renderer(m: PetModel())
-    let cell = 7, fx0 = -10, fy0 = -23, fw = 44, fh = 40, cols = 6
+    let cell = 7, fx0 = -10, fy0 = -23, fw = 44, fh = 40
+    let cols = only == nil ? 6 : (AnimationData.frames[only!]?.count ?? 12)
     try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     var rows: [(String, CGImage)] = []
-    for anim in AnimationCatalog.all {
+    for anim in AnimationCatalog.all where only == nil || anim.id == only {
         let n = AnimationData.frames[anim.id]?.count ?? 12
         let w = fw * cols * cell, h = fh * cell
         guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,

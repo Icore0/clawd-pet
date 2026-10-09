@@ -84,9 +84,15 @@ struct LiveMascot: View {
     let model: PetModel
     var name = "breathe"
     var cell: Double = 6
+    /// Loops run on (their own data decides what repeats); one-shots replay after a short rest.
+    func previewTime(_ d: Date) -> Double {
+        let t = d.timeIntervalSinceReferenceDate
+        let frames = Double(AnimationData.frames[AnimationCatalog.resolve(name)]?.count ?? 12) / 12
+        return AnimationCatalog.byId(name).loop ? t.truncatingRemainder(dividingBy: 3600) : t.truncatingRemainder(dividingBy: frames + 0.8)
+    }
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0 / 12)) { tl in
-            MascotView(model: model, name: name, t: tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: max(0.5, AnimationCatalog.byId(name).duration)), cell: cell)
+            MascotView(model: model, name: name, t: previewTime(tl.date), cell: cell)
         }
     }
 }

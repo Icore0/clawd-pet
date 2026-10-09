@@ -70,7 +70,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--ascii"), i + 2 < CommandLine.
     exit(runAscii(CommandLine.arguments[i + 1], Int(CommandLine.arguments[i + 2]) ?? 0))
 }
 if let i = CommandLine.arguments.firstIndex(of: "--sheet"), i + 1 < CommandLine.arguments.count {
-    exit(runSheet(CommandLine.arguments[i + 1]))
+    exit(runSheet(CommandLine.arguments[i + 1], only: i + 2 < CommandLine.arguments.count ? CommandLine.arguments[i + 2] : nil))
 }
 if CommandLine.arguments.contains("--selftest") {
     let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
@@ -423,6 +423,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var soundsOn: Bool { get { UserDefaults.standard.bool(forKey: "sounds") } set { UserDefaults.standard.set(newValue, forKey: "sounds") } }
 
     func applicationDidFinishLaunching(_ n: Notification) {
+        // The bare mascot in the Dock: macOS tiles bundle icons, not one set at runtime.
+        if let url = Bundle.main.url(forResource: "Mascot", withExtension: "png"), let img = NSImage(contentsOf: url) {
+            NSApp.applicationIconImage = img
+        }
         AppDelegate.shared = self
         let me = Bundle.main.bundleIdentifier ?? ""
         if NSRunningApplication.runningApplications(withBundleIdentifier: me).count > 1 { NSApp.terminate(nil) }

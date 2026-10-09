@@ -24,10 +24,10 @@
 
 ## Install
 
-> **First release lands today.** The download link appears here when `v1.0.0` is published. Until then, [build from source](#build-from-source).
+**[Download Wigglet.dmg](https://github.com/Icore0/wigglet/releases/latest/download/Wigglet.dmg)** · macOS 13+ · Apple silicon and Intel
 
-1. Download `Wigglet.dmg` from Releases and drag **Wigglet** to Applications.
-2. First launch only: right-click the app and choose **Open**, because it isn't notarized yet. Or run:
+1. Open the disk image and drag **Wigglet** to Applications.
+2. First launch only (Wigglet isn't notarized yet): open it once, click **Done** on the warning, then go to **System Settings → Privacy & Security** and click **Open Anyway**. Or skip all that with one Terminal line:
    ```sh
    xattr -dr com.apple.quarantine /Applications/Wigglet.app
    ```
@@ -149,7 +149,7 @@ Click **Disconnect** in Settings, or use the menu-bar icon. Hooks you added your
 <details>
 <summary><b>Troubleshooting</b></summary>
 
-- **"Wigglet can't be opened."** Right-click the app and choose **Open**, or run the `xattr` line above.
+- **"Wigglet can't be opened" or "Apple could not verify…"** Go to **System Settings → Privacy & Security** and click **Open Anyway**, or run the `xattr` line above. (Right-click → Open no longer skips this on macOS 15 and later.)
 - **No Wigglet appears for a session.** Open Wigglet: Home shows each setup step with a check mark. If step 1 warns, move Wigglet into Applications and open it from there (macOS runs apps from Downloads in a temporary place that Claude Code can't reach). Then start a new session. Sessions that were already running show up after their next tool call.
 - **Connect fails.** Your `~/.claude/settings.json` probably isn't valid JSON. Fix it, then connect again.
 </details>

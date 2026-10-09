@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-09
+
+First public release. It includes everything below.
+
 ### Changed
 - New pixel art at twice the resolution (24 x 16): faces with mouths and more expressions, hands that show in front of the body, raised arms that read as arms, and clear props for every activity (book, laptop, magnifier, globe, clipboard, test tube, hammer, rocket, paper plane, parachute parcel, watch, flag, hourglass, clock).
 - 56 clips, each redrawn to say one thing. Thirty unclear clips were folded into the closest clear one (for example `bash` plays `edit`, `bandage` plays `oops`), so every trigger still works.
@@ -11,6 +15,9 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - The main window's content grows with the window, full screen included.
 
 ### Fixed
+- Install, handoff and deploy animations: no props drawn over the face, nothing cut off at the edge of the Wigglet, and the deploy countdown plays once.
+- The app icon: a dark rounded square in Finder (macOS 26+ tiles any other shape in light gray), and the bare mascot in the Dock while Wigglet runs.
+- First-launch instructions now say **Open Anyway** in Privacy & Security; right-click → Open no longer works for unnotarized apps on macOS 15+.
 - The hover card no longer flashes where it was last shown, and no longer pops up while you drag a Wigglet.
 - Chat replies no longer start with an emote such as "*wiggles*".
 
@@ -52,7 +59,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Removed
 - `alarm`: its trigger couldn't be verified.
 
-## [1.0.0] - not yet released
+### Before release (first draft)
 
 ### Added
 - One Wigglet per Claude Code session, up to six side by side, plus a `+N` badge. Waiting sessions move to the front.
