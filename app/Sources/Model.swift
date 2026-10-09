@@ -42,6 +42,8 @@ struct SessionPet: Identifiable {
 }
 
 func teamStride(_ scale: Double) -> Double { 13 * scale + 8 }
+/// Points per sprite pixel: the sprite is 24 pixels wide where the size setting counts 12 cells.
+func spritePixel(_ scale: Double) -> Double { scale / 2 }
 func teamPanelWidth(count: Int, scale: Double) -> Double {
     let slots = Double(min(6, max(1, count)))
     let extra: Double = count > 6 ? 44 : 0

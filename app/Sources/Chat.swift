@@ -85,8 +85,17 @@ final class ChatModel: ObservableObject {
         }
     }
 
+    /// Drops emotes a model sometimes opens with ("*wiggles*", "(hums)", "[waves]") so only the answer shows.
+    static func clean(_ text: String) -> String {
+        var t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let r = t.range(of: #"^(\*[^*\n]{1,60}\*|\([^)\n]{1,60}\)|\[[^\]\n]{1,60}\])\s*"#, options: .regularExpression), r.upperBound < t.endIndex {
+            t.removeSubrange(r)
+        }
+        return t
+    }
+
     private func remember(_ answer: String) {
-        let a = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        let a = Self.clean(answer)
         if !a.isEmpty { lines.append(ChatLine(role: "assistant", text: a)) }
         if lines.count > 20 { lines = Array(lines.suffix(20)) }
     }
@@ -126,7 +135,7 @@ final class ChatModel: ObservableObject {
         })
     }
 
-    static let persona = "You are \(PRODUCT_NAME), a tiny friendly desktop companion who lives on the user's screen next to their Claude Code sessions. Answer briefly (1-4 sentences) unless asked for more. Plain text, no markdown headings."
+    static let persona = "You are \(PRODUCT_NAME), a tiny friendly desktop companion who lives on the user's screen next to their Claude Code sessions. Answer briefly (1-4 sentences) unless asked for more. Plain text, no markdown headings. Reply with words only: never write actions, emotes or stage directions such as *waves* or (hums)."
 
     /// "Just use Claude": runs the user's own `claude -p`. Arguments go in as an argv array, never through a shell.
     private func sendCLI(_ msg: String) {
@@ -167,7 +176,7 @@ final class ChatModel: ObservableObject {
             DispatchQueue.main.async {
                 guard let self else { return }
                 if let sid, isSafeSid(sid) { self.sessionId = sid }
-                self.reply = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+                self.reply = Self.clean(answer)
                 if failed { self.setStatus(.offline) } else { self.remember(self.reply); self.setStatus(.talking) }
                 self.isBusy = false; self.onChange(); self.onReply()
             }
@@ -272,7 +281,7 @@ struct ChatView: View {
                         }
                     } else if chat.isBusy || history.last?.role == "user" {
                         // Streaming, or an error that never became part of the history.
-                        row("assistant", chat.reply)
+                        row("assistant", ChatModel.clean(chat.reply))
                     }
                     Color.clear.frame(height: 1).id("end")
                 }

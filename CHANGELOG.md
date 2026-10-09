@@ -4,6 +4,16 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+- New pixel art at twice the resolution (24 x 16): faces with mouths and more expressions, hands that show in front of the body, raised arms that read as arms, and clear props for every activity (book, laptop, magnifier, globe, clipboard, test tube, hammer, rocket, paper plane, parachute parcel, watch, flag, hourglass, clock).
+- 56 clips, each redrawn to say one thing. Thirty unclear clips were folded into the closest clear one (for example `bash` plays `edit`, `bandage` plays `oops`), so every trigger still works.
+- The speech bubble moves up when a clip draws above the head.
+- The main window's content grows with the window, full screen included.
+
+### Fixed
+- The hover card no longer flashes where it was last shown, and no longer pops up while you drag a Wigglet.
+- Chat replies no longer start with an emote such as "*wiggles*".
+
 ### Added
 - Updates: Wigglet checks GitHub Releases every six hours and installs a new version only once it's published and its Ed25519 signature checks out. **Install updates automatically** (on by default) and **Check now** are in Settings; **Check for Updates…** is in the menu.
 - Finds sessions that were already open: recent transcripts in `~/.claude/projects/` show up without waiting for a hook. Setup step 3 completes as soon as one is found.

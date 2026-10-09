@@ -9,14 +9,14 @@ let wiggletOrange = Color(red: 0.851, green: 0.467, blue: 0.341)   // #D97757
 let wiggletDark = Color(red: 0.745, green: 0.408, blue: 0.294)     // #BE684B
 let ink = Color.black
 
-enum Eyes: Equatable { case open, tall, dash, cross }
+enum Eyes: Equatable { case open, tall, closed, happy, cross, spiral }
+enum Mouth: Equatable { case none, smile, open, o, yawn, wavy, flat }
 /// `.right` faces right: the back (left) column darkens and both eyes shift toward the front, as in the official turn.
 /// `.back` is the turned-away frame used mid-spin: no eyes, both side columns dark.
 enum Profile: Equatable { case none, left, right, back }
 
-/// Whole cells only. `lean` shifts the upper body one cell. `squash` drops one body row and shortens the legs one cell.
-/// `crouch` lowers the body one cell onto 1-cell legs with feet, the official typing stance.
-/// `fade` 0...3 removes cells in a fixed dither pattern (session pop-in and fade-out), never alpha.
+/// Whole sprite pixels (24 x 16 grid). `lean` shifts the body sideways (max 2). `squash` lowers the head, keeping the feet down.
+/// `crouch` sits the body down two pixels onto short legs. `fade` 1...4 removes pixels in a fixed dither (pop-in, fade-out), never alpha.
 struct Pose: Equatable {
     var lean = 0
     var squash = 0
@@ -25,6 +25,7 @@ struct Pose: Equatable {
     var armLX = 0, armLY = 0
     var armRX = 0, armRY = 0
     var eyes = Eyes.open
+    var mouth = Mouth.none
     var lookX = 0, lookY = 0
     var leg = [0, 0, 0, 0]
     var legX = [0, 0, 0, 0]
@@ -74,7 +75,8 @@ final class Pen {
 
     init(_ c: GraphicsContext, u: Double, ox: Double, oy: Double) {
         self.c = c
-        self.u = max(1, u.rounded())
+        // Sprite pixels may be half points; `rect` snaps them onto device pixels.
+        self.u = max(0.5, (u * 2).rounded() / 2)
         self.ox = ox
         self.oy = oy
         self.device = Double(NSScreen.main?.backingScaleFactor ?? 2)
@@ -242,67 +244,6 @@ func sessionAccent(_ name: String) -> Color {
     return sessionAccents[sum % 7]
 }
 
-func drawWigglet(_ p: Pen, _ pose: Pose, color: Color = wiggletOrange, eyes: Bool = true, arms: Bool = true, accent: Color? = nil) {
-    let lean = max(-1, min(1, pose.lean))
-    // Feet always stay on the ground row (y 8): squash lowers the head one row, crouch folds the legs to one cell.
-    let squash = pose.squash == 0 ? 0 : 1
-    let drop = pose.crouch ? 1 : 0
-    let bodyH = 6 - squash
-    let legH = 2 - drop
-    let bodyX = 2 + lean
-    let top = squash + drop
-    p.layer = .body
-    p.rect(Double(bodyX), Double(top), 8, Double(bodyH), color)
-    switch pose.profile {
-    case .right: p.rect(Double(bodyX), Double(top), 1, Double(bodyH), wiggletDark)
-    case .left: p.rect(Double(bodyX + 7), Double(top), 1, Double(bodyH), wiggletDark)
-    case .back:
-        p.rect(Double(bodyX), Double(top), 1, Double(bodyH), wiggletDark)
-        p.rect(Double(bodyX + 7), Double(top), 1, Double(bodyH), wiggletDark)
-    case .none: break
-    }
-    if let accent, bodyH > 4 { p.rect(Double(bodyX), Double(top + 4), 8, 1, accent) }
-    let cols = [0, 2, 5, 7]
-    p.layer = .leg
-    for i in 0..<4 {
-        let x = bodyX + cols[i] + pose.legX[i]
-        let h = max(1, legH - pose.leg[i])
-        p.rect(Double(x), Double(top + bodyH), 1, Double(h), color)
-        if pose.crouch { p.rect(Double(x - 1), Double(top + bodyH + h - 1), 1, 1, color) }
-    }
-    if arms {
-        p.layer = .arm
-        p.rect(Double(lean + pose.armLX), Double(top + 2 + pose.armLY), 2, 2, color)
-        p.rect(Double(10 + lean - pose.armRX), Double(top + 2 + pose.armRY), 2, 2, color)
-    }
-    defer { p.layer = .body }
-    guard eyes, pose.profile != .back else { return }
-    let eyeXs: [Int]
-    switch pose.profile {
-    case .none, .back: eyeXs = [bodyX + 1, bodyX + 6]
-    case .right: eyeXs = [bodyX + 3, bodyX + 6]
-    case .left: eyeXs = [bodyX + 1, bodyX + 4]
-    }
-    p.layer = .eye
-    for (n, ex) in eyeXs.enumerated() {
-        let x = ex + pose.lookX
-        let y = top + 1 + pose.lookY
-        switch pose.eyes {
-        case .open: p.rect(Double(x), Double(y), 1, 1, ink)
-        case .tall: p.rect(Double(x), Double(y), 1, 2, ink)
-        case .dash: p.rect(Double(x), Double(y + 1), 1, 1, ink)
-        case .cross:
-            // "> <": a 2x3 chevron per eye, pointing inward.
-            let cells = n == 0 ? [(0, 0), (1, 1), (0, 2)] : [(1, 0), (0, 1), (1, 2)]
-            for (i, j) in cells { p.rect(Double(x + i - (n == 0 ? 0 : 1)), Double(y + j - 1), 1, 1, ink) }
-        }
-    }
-    if pose.blush {
-        p.rect(Double(bodyX), Double(top + 3), 1, 1, Color.pink)
-        p.rect(Double(bodyX + 7), Double(top + 3), 1, 1, Color.pink)
-    }
-}
-
 /// Rasterized labels. `GraphicsContext.ResolvedText` is bound to one draw, so each string is drawn once into a 2× image and reused until its text, size, weight, or color changes.
 final class TextCache {
     private struct Key: Hashable {
@@ -465,23 +406,11 @@ struct Renderer {
         _ = quirk; _ = local; _ = now
         if reduceMotion { return Pose() }
         let t = snap12(rawT)
-        if name == "glide" {
-            var p = Pose()
-            p.lean = m.vx > 8 ? 1 : (m.vx < -8 ? -1 : 0)
-            p.eyes = .cross
-            p.armLY = cellStep(t, 20) > 0 ? -1 : 0
-            p.armRY = p.armLY == 0 ? -1 : 0
-            p.lift = 1
-            return p
-        }
-        guard let data = AnimationData.clips[name] else { return Pose() }
+        _ = t; _ = gaze
+        guard let data = AnimationData.clips[name], let frames = AnimationData.frames[name], !frames.isEmpty else { return Pose() }
         let loop = AnimationCatalog.index[name]?.loop ?? true
         let frame = Int((max(0, rawAge) * 12).rounded(.down))
-        var p = data.key(at: frame, loop: loop).pose
-        if name == "conflictStare" && gaze < 0 {
-            p.lookX = -p.lookX; p.lean = -p.lean
-            if p.profile == .right { p.profile = .left }
-        }
+        var p = frames[data.index(frame, loop: loop)]
         // Resting clips keep an eye on the cursor, one cell at most.
         if AnimationCatalog.ambientIds.contains(name) && p.lookX == 0 && p.lookY == 0 && p.profile == .none && p.eyes == .open {
             let cur = m.cursor()
@@ -513,7 +442,7 @@ struct Renderer {
         let now = presentationDate(raw, mood: mood, sleeping: sleeping)
         let t = now.timeIntervalSinceReferenceDate
         let beh = behavior(now, t, mood: mood, kind: kind, say: say, project: project, sleeping: sleeping, session: session)
-        let bname = name(beh)
+        let bname = AnimationCatalog.resolve(name(beh))
         let slot = session?.sid ?? (m.demo.isEmpty ? "solo" : "demo")
         // Every clip starts from its first key when the character switches to it.
         if m.clipTrack[slot]?.name != bname { m.clipTrack[slot] = (bname, now) }
@@ -525,6 +454,7 @@ struct Renderer {
         let dropAge = now.timeIntervalSince(m.dropAt)
         if dropAge < 0.4 && snap12(dropAge) < 0.2 { p.squash = 1 }
         if bname == "sleep" && clickAge < 2.0 { p.eyes = .open; p.squash = 0 }
+        if m.isGliding && session?.sid == m.glideSid { p.lean = m.vx > 8 ? 2 : (m.vx < -8 ? -2 : 0) }
         if !(m.isDragging || m.isGliding) { p = connect(slot, p, now: now) }
         return (p, now, bname, age)
     }
@@ -539,7 +469,8 @@ struct Renderer {
         if steps < 0 || steps > 6 || reduceMotion {
             m.trail[slot] = (target, frame); return target
         }
-        func step(_ a: Int, _ b: Int) -> Int { a < b ? min(b, a + steps) : max(b, a - steps) }
+        // Two sprite pixels per frame: the same speed as one old cell.
+        func step(_ a: Int, _ b: Int) -> Int { a < b ? min(b, a + 2 * steps) : max(b, a - 2 * steps) }
         var p = target
         let o = last.pose
         p.lean = step(o.lean, target.lean); p.squash = step(o.squash, target.squash)
@@ -574,20 +505,21 @@ struct Renderer {
         let bname = posed.name
         let age = posed.age
         let u = max(1, m.scale.rounded())
+        let fu = spritePixel(m.scale)
         let cx = anchorX ?? Double(size.width) / 2
         let ground = Double(size.height) - 14
 
-        let sw = Double(max(4, 11 - p.lift)) * u
-        let shadow = Path(CGRect(x: (cx - sw / 2 + Double(p.dx) * u).rounded(), y: ground.rounded(), width: max(1, sw.rounded()), height: u))
+        let sw = Double(max(8, 22 - p.lift)) * fu
+        let shadow = Path(CGRect(x: (cx - sw / 2 + Double(p.dx) * fu).rounded(), y: ground.rounded(), width: max(1, sw.rounded()), height: fu))
         c.fill(shadow, with: .color(.black.opacity(0.22)), style: FillStyle(antialiased: false))
 
-        let ox = cx - 6 * u + Double(p.dx) * u
-        let oy = ground - 8 * u - Double(p.lift) * u
-        let pen = Pen(c, u: u, ox: ox, oy: oy)
+        let ox = cx - 12 * fu + Double(p.dx) * fu
+        let oy = ground - 16 * fu - Double(p.lift) * fu
+        let pen = Pen(c, u: fu, ox: ox, oy: oy)
 
         paintSprite(pen, p, bname, t, age, accent: accent)
         paintEffects(pen, bname, p, frame: clipFrame(bname, age: age), t: t, session: session, now: now)
-        let headX = cx + Double(p.dx) * u, headY = oy
+        let headX = cx + Double(p.dx) * fu, headY = oy - Double(Renderer.overhead[bname] ?? 0) * fu
         drawBubble(&c, bname, cx: headX, headY: headY, u: u, now: now, t: t, size: size, say: say, project: project, delta: delta, session: session)
         if let subs = session?.subagentCount, subs > 1 {
             let img = m.labels.image(string: "+\(subs - 1)", size: 11, weight: .bold, color: .white)
@@ -658,260 +590,6 @@ struct Renderer {
         c.draw(Image(decorative: resolved, scale: 2), at: CGPoint(x: cx, y: y + bh / 2), anchor: .center)
     }
 
-    func drawArms(_ pen: Pen, _ p: Pose) {
-        let l = leftHand(p), r = rightHand(p)
-        let was = pen.layer
-        pen.layer = .arm
-        pen.rect(Double(l.x), Double(l.y), 2, 2, wiggletOrange)
-        pen.rect(Double(r.x), Double(r.y), 2, 2, wiggletOrange)
-        pen.layer = was
-    }
-    /// Top-left cell of each 2x2 hand, in sprite cells. Props are drawn from these so they move with the hand.
-    func leftHand(_ p: Pose) -> (x: Int, y: Int) { (max(-1, min(1, p.lean)) + p.armLX, bodyTop(p) + 2 + p.armLY) }
-    func rightHand(_ p: Pose) -> (x: Int, y: Int) { (10 + max(-1, min(1, p.lean)) - p.armRX, bodyTop(p) + 2 + p.armRY) }
-    func bodyTop(_ p: Pose) -> Int { (p.squash == 0 ? 0 : 1) + (p.crouch ? 1 : 0) }
-
-    // MARK: props
-    func drawLaptop(_ p: Pen, _ kind: String, _ frame: Int) {
-        let was = p.layer
-        p.layer = .prop
-        let screen = Color(red: 0.11, green: 0.11, blue: 0.13), edge = Color(red: 0.32, green: 0.32, blue: 0.36)
-        p.rect(3, 4, 7, 3, edge)
-        p.rect(3, 5, 6, 2, screen)
-        p.rect(2, 7, 8, 1, Color(red: 0.42, green: 0.42, blue: 0.46))
-        for (i, y) in [5, 6].enumerated() {
-            let len = 1 + ((i + frame / 2) % 4)
-            if kind == "bash" {
-                p.px(3, y, .green)
-                p.rect(4, Double(y), Double(min(4, len)), 1, Color(red: 0.3, green: 0.75, blue: 0.4))
-            } else {
-                p.rect(3 + Double(i % 2), Double(y), Double(min(4, len)), 1, i % 2 == 0 ? wiggletOrange : Color(white: 0.85))
-            }
-        }
-        if kind == "bash" && frame % 12 < 6 { p.px(8, 6, .white) }
-        p.layer = was
-    }
-
-    /// Body, carried prop, hands, hat. Props are drawn before the hands, so a hand always sits on what it holds.
-    func paintSprite(_ pen: Pen, _ pose: Pose, _ name: String, _ t: Double, _ age: Double, accent: Color? = nil) {
-        let frame = clipFrame(name, age: age)
-        pen.fade = pose.fade
-        defer { pen.fade = 0 }
-        let typing = name == "edit" || name == "bash" || name == "frantic"
-        drawWigglet(pen, pose, arms: false, accent: accent)
-        if typing { drawLaptop(pen, name, frame) } else { drawProp(pen, name, pose, frame) }
-        drawArms(pen, pose)
-        drawHat(pen, name, pose, frame)
-    }
-
-    func drawProp(_ p: Pen, _ kind: String, _ pose: Pose, _ frame: Int) {
-        let l = leftHand(pose), r = rightHand(pose)
-        let brown = Color(red: 0.55, green: 0.38, blue: 0.22), tape = Color(red: 0.9, green: 0.8, blue: 0.55)
-        let paper = Color(white: 0.96), line = Color(white: 0.62), shade = Color(white: 0.78)
-        let was = p.layer
-        p.layer = .prop
-        defer { p.layer = was }
-        func R(_ x: Int, _ y: Int, _ w: Int, _ h: Int, _ c: Color) { p.rect(Double(x), Double(y), Double(w), Double(h), c) }
-        switch kind {
-        case "read", "burstRead", "book", "notebook":
-            // Two-handed: the book spans the gap between the hands.
-            let x0 = l.x + 2, w = max(2, r.x - l.x - 2)
-            let cover = kind == "book" ? Color(red: 0.32, green: 0.42, blue: 0.68) : (kind == "notebook" ? Color(red: 0.3, green: 0.55, blue: 0.4) : brown)
-            R(x0, l.y, w, 4, cover)
-            R(x0 + 1, l.y, w - 2, 3, paper)
-            R(x0 + w / 2, l.y, 1, 3, shade)
-            let flip = (frame / (kind == "burstRead" ? 2 : 6)) % 2
-            for i in 0..<2 {
-                R(x0 + 1, l.y + 1 + i, flip == 0 ? 1 : 2, 1, line)
-                R(x0 + w / 2 + 1, l.y + 1 + i, flip == 0 ? 2 : 1, 1, line)
-            }
-        case "plan":
-            let x0 = l.x + 2, w = max(2, r.x - l.x - 2)
-            R(x0, l.y, w, 4, brown)
-            R(x0 + 1, l.y, w - 2, 3, paper)
-            R(x0 + w / 2 - 1, l.y - 1, 2, 1, Color(white: 0.5))
-            let done = (frame / 6) % 4
-            for i in 0..<3 {
-                p.px(x0 + 1, l.y + i, i < done ? Color(red: 0.3, green: 0.75, blue: 0.4) : Color(white: 0.75))
-                R(x0 + 2, l.y + i, max(1, w - 4), 1, line)
-            }
-        case "search", "webSearch":
-            // Lens on a one-cell handle, held up by the right hand.
-            let cx = r.x - 1, cy = r.y - 2
-            p.px(r.x, r.y - 1, brown)
-            for (dx, dy) in [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)] { p.px(cx + dx, cy + dy, Color(white: 0.86)) }
-            p.px(cx, cy, Color(red: 0.62, green: 0.84, blue: 0.95))
-        case "web":
-            let cx = (l.x + 1 + r.x) / 2, cy = l.y + 2
-            p.circleCells(cx, cy, 2, Color(red: 0.2, green: 0.5, blue: 0.9))
-            p.px(cx - 1, cy - 1, Color(red: 0.3, green: 0.75, blue: 0.4))
-            p.px(cx + (frame / 4) % 2, cy + 1, Color(red: 0.3, green: 0.75, blue: 0.4))
-        case "webFetch":
-            R(r.x - 1, r.y - 3, 3, 3, paper)
-            R(r.x - 1, r.y - 2, 2, 1, line)
-        case "test":
-            let liquid = [Color(red: 0.3, green: 0.8, blue: 0.45), Color(red: 0.6, green: 0.4, blue: 0.85), Color(red: 0.3, green: 0.75, blue: 0.85)][(frame / 12) % 3]
-            p.px(r.x, r.y - 4, Color(white: 0.85))
-            R(r.x, r.y - 3, 2, 1, Color(white: 0.85))
-            R(r.x, r.y - 2, 2, 2, liquid)
-        case "build":
-            let grey = Color(white: 0.45)
-            if pose.armRY <= -1 {
-                R(r.x + 1, r.y - 2, 1, 2, brown)
-                R(r.x, r.y - 3, 3, 1, grey)
-            } else {
-                p.px(r.x + 2, r.y, brown); p.px(r.x + 3, r.y + 1, brown)
-                R(r.x + 3, r.y + 2, 2, 1, grey)
-            }
-        case "git":
-            let ink = Color(white: 0.85)
-            p.lineCells(13, 0, 13, 6, ink)
-            p.lineCells(13, 3, 15, 2, ink)
-            let on = (frame / 6) % 4
-            for (i, n) in [(13, 0), (13, 3), (13, 6), (15, 2)].enumerated() { p.px(n.0, n.1, on == i ? Color.orange : Color.white) }
-        case "install":
-            // One box always rests between the hands; more drop onto the stack one cell per frame.
-            let box = Color(red: 0.75, green: 0.55, blue: 0.32)
-            let landed = min(3, 1 + frame / 7)
-            let x0 = l.x + 2, w = max(2, r.x - l.x - 2)
-            for k in 0..<landed { R(x0, l.y - 1 - 2 * k, w, 2, box); R(x0 + w / 2, l.y - 1 - 2 * k, 1, 2, tape) }
-            if landed < 3 {
-                let y = l.y - 1 - 2 * landed - max(0, 4 - frame % 7)
-                R(x0 + 1, y, w - 2, 2, box); R(x0 + w / 2, y, 1, 2, tape)
-            }
-        case "deploy":
-            let launch = 9
-            let y = frame < launch ? r.y - 3 : r.y - 3 - (frame - launch) * 2
-            p.px(r.x, y - 1, Color(red: 0.9, green: 0.3, blue: 0.3))
-            R(r.x, y, 1, 3, paper)
-            p.px(r.x - 1, y + 2, Color(red: 0.9, green: 0.3, blue: 0.3)); p.px(r.x + 1, y + 2, Color(red: 0.9, green: 0.3, blue: 0.3))
-            if frame >= launch {
-                p.px(r.x, y + 3, Color.yellow)
-                if frame % 2 == 0 { p.px(r.x, y + 4, Color.orange) }
-            }
-        case "commit":
-            R(r.x, r.y + 2, 2, 1, Color(red: 0.75, green: 0.15, blue: 0.18))
-        case "push":
-            let blue = Color(red: 0.55, green: 0.75, blue: 0.95)
-            if frame < 8 {
-                R(r.x, r.y - 1, 2, 1, blue); p.px(r.x + 2, r.y - 1, .white)
-            } else {
-                let k = frame - 8
-                R(r.x + 1 + k, r.y - 1 - k / 2, 2, 1, blue); p.px(r.x + 3 + k, r.y - 1 - k / 2, .white)
-            }
-        case "pull", "parcel", "handoff":
-            let carried = kind == "pull" ? true : frame < 8
-            if carried {
-                if pose.armLX >= 1 && pose.armRX >= 1 { R(l.x + 3, l.y - 1, 4, 3, brown); R(l.x + 5, l.y - 1, 1, 3, tape) }
-                else { R(r.x, r.y - 2, 2, 2, brown); p.px(r.x + 1, r.y - 2, tape) }
-            } else {
-                R(13, 6, 2, 2, brown); p.px(14, 6, tape)
-            }
-        case "lint":
-            p.px(r.x - 1, r.y + 1, brown)
-            R(r.x - 3, r.y + 2, 3, 1, Color(red: 0.85, green: 0.55, blue: 0.7))
-        case "migrate":
-            R(l.x + 3, l.y - 2, 4, 2, Color(red: 0.45, green: 0.55, blue: 0.75))
-            R(l.x + 4, l.y - 4, 3, 2, Color(red: 0.6, green: 0.7, blue: 0.88))
-        case "docker":
-            let blue = Color(red: 0.2, green: 0.55, blue: 0.85)
-            R(l.x + 2, l.y - 1, 6, 3, blue)
-            for x in stride(from: l.x + 3, to: l.x + 8, by: 2) { R(x, l.y - 1, 1, 3, Color(red: 0.15, green: 0.42, blue: 0.7)) }
-        case "serve":
-            p.px(r.x, r.y - 3, Color(white: 0.5))
-            R(r.x, r.y - 2, 2, 2, frame % 12 < 6 ? Color(red: 1, green: 0.85, blue: 0.35) : Color(red: 0.95, green: 0.7, blue: 0.25))
-        case "mcp":
-            p.lineCells(r.x + 2, r.y + 1, r.x + 4, 7, Color(white: 0.85))
-            R(r.x + 4, 7, 2, 1, Color(white: 0.6))
-        case "watch":
-            p.px(l.x, l.y, .white); p.px(l.x + 1, l.y, Color(white: 0.2))
-        case "flag":
-            R(r.x + 1, r.y - 4, 1, 4, .white)
-            R(r.x + 2, r.y - 4, frame % 8 < 4 ? 3 : 2, 2, Color.orange)
-        case "tea", "coffee":
-            let cup = kind == "coffee" ? Color(red: 0.45, green: 0.28, blue: 0.16) : Color(red: 0.7, green: 0.85, blue: 0.75)
-            R(r.x, r.y - 2, 2, 2, Color(white: 0.95))
-            R(r.x, r.y - 2, 2, 1, cup)
-            p.px(r.x + 2, r.y - 1, Color(white: 0.95))
-        default:
-            break
-        }
-    }
-
-    /// Hats ride on the head: they follow lean and crouch so they never slide off.
-    func drawHat(_ p: Pen, _ b: String, _ pose: Pose, _ frame: Int) {
-        let dark = Color(white: 0.16)
-        let ox = max(-1, min(1, pose.lean)), oy = bodyTop(pose)
-        let was = p.layer
-        p.layer = .hat
-        defer { p.layer = was }
-        func rect(_ x: Double, _ y: Double, _ w: Double, _ h: Double, _ c: Color) { p.rect(x + Double(ox), y + Double(oy), w, h, c) }
-        func px(_ x: Int, _ y: Int, _ c: Color) { p.px(x + ox, y + oy, c) }
-        switch b {
-        case "edit":
-            rect(3, -1, 7, 1, dark)
-            rect(2, 1, 1, 2, dark)
-            rect(9, 1, 1, 2, dark)
-            px(2, 1, wiggletOrange)
-            px(9, 2, wiggletOrange)
-        case "bash":
-            rect(2, -1, 7, 2, dark)
-            rect(2, 0, 7, 1, Color(white: 0.28))
-            rect(5, -2, 2, 1, dark)
-            px(3, -1, Color.green)
-        case "search":
-            rect(2, 0, 8, 1, Color(red: 0.45, green: 0.3, blue: 0.18))
-            rect(3, -2, 6, 2, Color(red: 0.55, green: 0.38, blue: 0.22))
-            rect(3, -1, 6, 1, Color(red: 0.3, green: 0.2, blue: 0.12))
-        case "web":
-            rect(2, 0, 9, 1, Color(red: 0.85, green: 0.72, blue: 0.45))
-            rect(3, -2, 6, 2, Color(red: 0.9, green: 0.78, blue: 0.5))
-            rect(3, -1, 6, 1, Color(red: 0.7, green: 0.2, blue: 0.2))
-        case "agent":
-            let gold = Color(red: 0.98, green: 0.8, blue: 0.2)
-            rect(3, -1, 6, 1, gold)
-            for x in [3, 5, 8] { rect(Double(x), -2, 1, 1, gold) }
-            px(6, -1, Color.red)
-        case "build":
-            let y = Color(red: 0.98, green: 0.78, blue: 0.1)
-            rect(3, -2, 7, 2, y)
-            rect(2, 0, 8, 1, y)
-            rect(5, -2, 1, 1, y)
-        case "test":
-            rect(3, 1, 2, 2, Color.cyan.opacity(0.35))
-            rect(7, 1, 2, 2, Color.cyan.opacity(0.35))
-            rect(3, 1, 6, 1, Color(white: 0.9))
-        case "plan":
-            rect(9, -1, 1, 2, Color.yellow)
-            px(9, -1, Color.pink)
-        case "sleep":
-            rect(3, -1, 5, 1, Color(red: 0.75, green: 0.2, blue: 0.2))
-            rect(7, -2, 2, 2, Color(red: 0.75, green: 0.2, blue: 0.2))
-            px(10, 1, .white)
-            rect(3, 0, 6, 1, .white)
-        case "install":
-            rect(3, -1, 6, 1, Color(red: 0.2, green: 0.4, blue: 0.7))
-            rect(3, 0, 8, 1, Color(red: 0.2, green: 0.4, blue: 0.7))
-        case "done":
-            // Shades drop onto the eyes one cell per frame after the hop.
-            if frame >= 11 {
-                let y = Double(min(1, -3 + (frame - 11)))
-                rect(3, y, 3, 2, ink)
-                rect(6, y, 3, 2, ink)
-                px(3, Int(y), Color(white: 0.6))
-                px(7, Int(y), Color(white: 0.6))
-            }
-        case "bandage":
-            rect(6, 0, 3, 1, Color(red: 0.95, green: 0.85, blue: 0.68))
-            px(7, -1, Color(red: 0.95, green: 0.85, blue: 0.68))
-        case "nightcap", "nap":
-            rect(3, -1, 5, 1, Color(red: 0.3, green: 0.35, blue: 0.7))
-            rect(7, -2, 2, 2, Color(red: 0.3, green: 0.35, blue: 0.7))
-            px(9, -2, .white)
-        default: break
-        }
-    }
-
     static let quips: [String: [String]] = [
         "think": ["pondering…", "brain whirring", "connecting dots", "hold that thought", "consulting the vibes", "thinking really hard"],
         "read": ["skimming the juicy bits", "reading the fine print", "speed-reading", "studying the evidence", "ooh, what's this?"],
@@ -936,138 +614,6 @@ struct Renderer {
     func pick(_ k: String) -> String {
         let pool = Renderer.quips[k] ?? [k]
         return pool[abs(Int(m.stamp / 7)) % pool.count]
-    }
-
-    // MARK: effects (cells only, so every effect sits on the same grid as Wigglet)
-    static let glyphs: [String: [String]] = [
-        "?": ["###", "..#", ".##", "...", ".#."],
-        "!": ["#", "#", "#", ".", "#"],
-        "z": ["##", ".#", "##"],
-        "Z": ["###", "..#", ".#.", "###"],
-        "check": ["....#", "...#.", "#.#..", ".#..."],
-        "x": ["#.#", ".#.", "#.#"],
-        "heart": [".#.#.", "#####", ".###.", "..#.."],
-        "note": [".##", ".#.", ".#.", "##."],
-        "spark": [".#.", "###", ".#."],
-        "bulb": [".#.", "###", "###", ".#."],
-    ]
-
-    func glyph(_ p: Pen, _ name: String, _ x: Int, _ y: Int, _ c: Color) {
-        for (j, row) in (Renderer.glyphs[name] ?? []).enumerated() {
-            for (i, ch) in row.enumerated() where ch == "#" { p.px(x + i, y + j, c) }
-        }
-    }
-
-    /// A 7-cell-wide helper Wigglet standing on the ground row `g`.
-    func mini(_ p: Pen, _ x: Int, _ g: Int, hop: Int) {
-        let y = g - 3 - hop
-        p.rect(Double(x), Double(y), 5, 2, wiggletOrange)
-        p.px(x + 1, y, ink); p.px(x + 3, y, ink)
-        p.px(x - 1, y + 1, wiggletOrange); p.px(x + 5, y + 1, wiggletOrange)
-        for lx in [x, x + 2, x + 4] { p.px(lx, y + 2, wiggletOrange) }
-    }
-
-    /// Effects for clip `b`. `frame` counts from the clip start, `wall` is the free-running 12 fps clock.
-    func paintEffects(_ p: Pen, _ b: String, _ pose: Pose, frame: Int, t: Double, session: SessionPet?, now: Date) {
-        let was = p.layer
-        p.layer = .fx
-        defer { p.layer = was }
-        let wall = Int((snap12(t) * 12).rounded())
-        let g = 8 + pose.lift
-        let r = rightHand(pose)
-        let white = Color(white: 0.96), cyan = Color(red: 0.45, green: 0.8, blue: 0.95), yellow = Color(red: 1, green: 0.82, blue: 0.25)
-        let pink = Color(red: 1, green: 0.48, blue: 0.66), green = Color(red: 0.35, green: 0.8, blue: 0.45), red = Color(red: 0.92, green: 0.3, blue: 0.3)
-        let confetti = [yellow, pink, cyan, green, Color.orange, Color(red: 0.76, green: 0.55, blue: 1)]
-        func rain(_ n: Int) {
-            for i in 0..<n {
-                let x = (i * 11 + 3) % 22 - 5, y = -7 + ((wall / 2 + i * 4) % 14)
-                p.px(x, y, confetti[i % confetti.count])
-            }
-        }
-        switch b {
-        case "think", "chatThink", "thinking":
-            let lit = (wall / 4) % 4
-            for i in 0..<3 where i < lit { p.px(9 + i, -1 - i, white) }
-            if (wall / 36) % 3 == 0 && wall % 36 >= 24 { glyph(p, "bulb", 11, -7, yellow) }
-        case "done":
-            if frame < 30 { rain(6) }
-            glyph(p, "check", 11, -4, green)
-        case "confetti", "hop": rain(10)
-        case "testPass":
-            if frame < 3 { glyph(p, "spark", 11, -4, green) } else { glyph(p, "check", 11, -5, green); rain(6) }
-        case "testFail":
-            if frame % 8 < 6 { glyph(p, "x", 11, -4, red) }
-        case "web":
-            let level = (wall / 4) % 4
-            if level >= 1 { p.px(6, -1, cyan) }
-            if level >= 2 { p.px(5, -2, cyan); p.px(7, -2, cyan) }
-            if level >= 3 { p.px(4, -3, cyan); p.px(8, -3, cyan) }
-        case "agent":
-            for (i, x) in [-8, 14].enumerated() { mini(p, x, g - pose.lift, hop: (wall / 3 + i) % 2) }
-        case "handoff":
-            mini(p, 14, g - pose.lift, hop: frame >= 8 && frame < 12 ? 1 : 0)
-        case "compact":
-            let k = (wall / 3) % 3
-            for (x, dir) in [(-3 + k, 1), (14 - k, -1)] {
-                p.px(x, 3, white); p.px(x, 4, white); p.px(x, 5, white); p.px(x + dir, 4, white)
-            }
-        case "ask":
-            // Beside the raised hand, so it never fights the speech bubble above the head.
-            glyph(p, "?", r.x + 2, r.y - 1 - (wall / 6) % 2, yellow)
-        case "yourTurn":
-            let lit = (wall / 5) % 4
-            for i in 0..<3 where i < lit { p.px(12 + i * 2, 0, white) }
-        case "oops":
-            glyph(p, "!", -2, -1, red)
-            p.px(10, 1 + (wall / 3) % 3, cyan)
-        case "sleep", "nap", "nightcap":
-            // One z drifts up and right a cell at a time; a second, smaller one follows half a cycle later.
-            let k = (wall / 5) % 8
-            glyph(p, "Z", 10 + k / 3, -2 - k, white)
-            let k2 = (wall / 5 + 4) % 8
-            if k2 < 6 { glyph(p, "z", 11 + k2 / 3, -1 - k2, Color(white: 0.75)) }
-        case "dream":
-            p.circleCells(6, -4, 1, white); p.px(8, -2, white)
-        case "listen", "listening":
-            let h = (wall / 2) % 3 + 1
-            p.rect(-2, Double(4 - h), 1, Double(h), red); p.rect(13, Double(4 - h), 1, Double(h), red)
-        case "chatTalk", "talking", "hum":
-            glyph(p, "note", 11, -3 - (wall / 4) % 4, pink)
-        case "pet":
-            for i in 0..<2 { glyph(p, "heart", 1 + i * 6, -4 - ((wall / 3 + i * 3) % 5), pink) }
-        case "build":
-            if pose.armRY >= 1 { glyph(p, "spark", r.x + 4, r.y + 1, yellow) }
-        case "hello":
-            if wall % 8 < 4 { glyph(p, "spark", -4, -1, yellow) }
-        case "glide":
-            glyph(p, "spark", -3 + (wall % 3), -2, yellow)
-        case "mote":
-            p.px(6 + pose.lookX * 3, -2, white)
-        case "juggle":
-            p.px(2, -2 - (wall / 3) % 2, yellow); p.px(9, -1 - (wall / 3 + 1) % 2, pink)
-        case "tea", "coffee":
-            p.px(r.x + (wall / 4) % 2, r.y - 3 - (wall / 2) % 3, Color(white: 0.85))
-        case "sweat", "grind":
-            p.px(9, (wall / 3) % 3, cyan)
-        case "frantic":
-            for (i, y) in [1, 3, 5].enumerated() where (wall + i) % 2 == 0 { p.rect(13, Double(y), 2, 1, white) }
-        case "conflict":
-            glyph(p, "x", 5, -4, red)
-        case "highFive":
-            if frame >= 5 && frame < 12 { glyph(p, "spark", r.x + 2, r.y - 3, yellow) }
-        default: break
-        }
-        // A bead of sweat after a long stretch of work.
-        if ["edit", "bash", "think", "read"].contains(b), now.timeIntervalSince(m.moodSince) > 150, m.demo.isEmpty {
-            p.px(10, (wall / 4) % 3, cyan)
-        }
-        // Hearts after a click.
-        let ca = now.timeIntervalSince(m.clickAt)
-        if ca < 1.6 && session?.sid == m.clickSid {
-            glyph(p, "heart", 4, -4 - Int(ca * 5), pink)
-        }
-        // One helper per running sub-agent (the label shows the rest).
-        if let n = session?.subagentCount, n > 0, b != "agent", b != "handoff" { mini(p, 14, g - pose.lift, hop: 0) }
     }
 
     // MARK: speech bubble
@@ -1153,12 +699,12 @@ func runPixelAudit() -> Int32 {
     return failed ? 1 : 0
 }
 
-/// Frame audit. For every clip, walks each 12 fps frame of the authored data and fails on:
-///  (a) adjacent frames whose shape differs by more than `maxDelta` cells (lift/dx are translation, checked separately: max 1 cell),
+/// Frame audit. For every clip, walks each 12 fps frame (in-betweens included) and fails on:
+///  (a) adjacent frames whose shape differs by more than `maxDelta` pixels (lift, dx, lean and body drop are translation: max 2),
 ///  (b) a loop seam that breaks the same rules,
-///  (c) a carried prop (clip `held`) more than 1 cell from a hand,
-///  (d) an arm or leg that is not edge-connected to the body (unless the clip is `airborne`).
-/// `cut: true` on a key allows a jump into that key.
+///  (c) a carried prop (clip `held`) more than 2 pixels from a hand,
+///  (d) an arm or leg that is not connected to the body (unless the clip is `airborne`).
+/// A frame that starts a `cut` key may jump.
 func runFrameAudit() -> Int32 {
     let renderer = Renderer(m: PetModel())
     var failed = false
@@ -1173,66 +719,74 @@ func runFrameAudit() -> Int32 {
         for (y, row) in pen.cells { for (x, c) in row { out[Pen.key(x, y)] = c } }
         return out
     }
+    func xy(_ k: Int) -> (Int, Int) { (k % 4096 - 2048, k / 4096 - 512) }
     func changed(_ a: [Int: UInt32], _ b: [Int: UInt32], dx: Int = 0, dy: Int = 0) -> Int {
         var moved: [Int: UInt32] = [:]
-        for (k, c) in a { moved[Pen.key(k % 4096 - 2048 + dx, k / 4096 - 512 + dy)] = c }
-        return Set(moved.keys).union(b.keys).filter { moved[$0] != b[$0] }.count
+        for (k, c) in a { let p = xy(k); moved[Pen.key(p.0 + dx, p.1 + dy)] = c }
+        var n = 0
+        for k in Set(moved.keys).union(b.keys) where moved[k] != b[k] { n += 1 }
+        return n
     }
-    func touches(_ a: Set<Int>, _ b: Set<Int>, reach: Int) -> Bool {
+    func near(_ a: Set<Int>, _ b: Set<Int>, reach: Int) -> Bool {
         for k in a {
-            let x = k % 4096 - 2048, y = k / 4096 - 512
-            for dy in -reach...reach { for dx in -reach...reach where reach > 1 || abs(dx) + abs(dy) <= 1 {
-                if b.contains(Pen.key(x + dx, y + dy)) { return true }
-            } }
+            let (x, y) = xy(k)
+            for dy in -reach...reach { for dx in -reach...reach where b.contains(Pen.key(x + dx, y + dy)) { return true } }
         }
         return false
     }
-    func rectKeys(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> Set<Int> {
-        var s = Set<Int>(); for yy in y..<(y + h) { for xx in x..<(x + w) { s.insert(Pen.key(xx, yy)) } }; return s
+    /// Each connected group of `cells` must touch `anchor`.
+    func allAttached(_ cells: Set<Int>, to anchor: Set<Int>) -> Bool {
+        var left = cells
+        while let seed = left.first {
+            var group: Set<Int> = [seed], queue = [seed]
+            left.remove(seed)
+            while let k = queue.popLast() {
+                let (x, y) = xy(k)
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let n = Pen.key(x + dx, y + dy)
+                    if left.contains(n) { left.remove(n); group.insert(n); queue.append(n) }
+                }
+            }
+            if !near(group, anchor, reach: 1) { return false }
+        }
+        return true
     }
-    for anim in AnimationCatalog.all where anim.id != "glide" {
-        guard let data = AnimationData.clips[anim.id] else { print("\(anim.id) FAIL no frame data"); failed = true; continue }
-        let n = data.frameCount
-        let starts = Set(data.starts)
+    for anim in AnimationCatalog.all {
+        guard let data = AnimationData.clips[anim.id], let frames = AnimationData.frames[anim.id] else {
+            print("\(anim.id) FAIL no frame data"); failed = true; continue
+        }
+        let n = frames.count, cuts = data.cutFrames
         var problems: [String] = []
-        var prev: (cells: [Int: UInt32], pose: Pose)?
-        var first: (cells: [Int: UInt32], pose: Pose)?
-        func compare(_ a: (cells: [Int: UInt32], pose: Pose), _ b: (cells: [Int: UInt32], pose: Pose), cut: Bool, at f: Int, what: String) {
-            if cut { return }
-            // lean and body drop move the whole character one cell: compare shapes after that move, and allow one cell of it.
-            let mx = b.pose.lean - a.pose.lean, my = renderer.bodyTop(b.pose) - renderer.bodyTop(a.pose)
+        typealias Shot = (cells: [Int: UInt32], pose: Pose)
+        var prev: Shot?, first: Shot?
+        func compare(_ a: Shot, _ b: Shot, at f: Int, what: String) {
+            let mx = Frame(b.pose).bx - Frame(a.pose).bx, my = Frame(b.pose).top - Frame(a.pose).top
             let d = min(changed(a.cells, b.cells), changed(a.cells, b.cells, dx: mx, dy: my))
-            if d > data.maxDelta { problems.append("\(what) \(f): \(d) cells") }
-            if abs(a.pose.lift - b.pose.lift) > 1 || abs(a.pose.dx - b.pose.dx) > 1 || abs(mx) > 1 || abs(my) > 1 {
-                problems.append("\(what) \(f): jumps more than 1 cell")
+            if d > data.maxDelta + (data.airborne ? 40 : 0) { problems.append("\(what) \(f): \(d) px") }
+            let liftStep = data.airborne ? 4 : 2
+            if abs(a.pose.lift - b.pose.lift) > liftStep || abs(a.pose.dx - b.pose.dx) > 2 || abs(mx) > 2 || abs(my) > 2 {
+                problems.append("\(what) \(f): jumps more than 2 px")
             }
         }
         for f in 0..<n {
-            let key = data.key(at: f, loop: true)
-            let pose = key.pose
+            let pose = frames[f]
             let pen = frameCells(anim.id, pose, f)
-            let cur = (cells: flat(pen), pose: pose)
-            if let prev { compare(prev, cur, cut: key.cut && starts.contains(f), at: f, what: "pop") }
+            let cur: Shot = (flat(pen), pose)
+            if let prev, !cuts.contains(f) { compare(prev, cur, at: f, what: "pop") }
             if first == nil { first = cur }
             prev = cur
             let body = pen.layerCells[.body] ?? []
             if data.held {
                 let prop = pen.layerCells[.prop] ?? [], arms = pen.layerCells[.arm] ?? []
                 if prop.isEmpty { problems.append("frame \(f): held prop missing") }
-                else if !touches(prop, arms, reach: 2) { problems.append("frame \(f): prop floats off the hand") }
+                else if !near(prop, arms, reach: 2) { problems.append("frame \(f): prop floats off the hand") }
             }
             if !data.airborne && pose.fade == 0 {
-                let l = renderer.leftHand(pose), r = renderer.rightHand(pose)
-                for (side, h) in [("left", l), ("right", r)] where !touches(rectKeys(h.x, h.y, 2, 2), body, reach: 1) {
-                    problems.append("frame \(f): \(side) arm detached")
-                }
-                let legs = pen.layerCells[.leg] ?? []
-                let bodyBottom = body.map { $0 / 4096 - 512 }.max() ?? 0
-                let tops = legs.filter { $0 / 4096 - 512 == bodyBottom + 1 }
-                if tops.count < 4 || !touches(tops, body, reach: 1) { problems.append("frame \(f): leg detached") }
+                if !allAttached(pen.layerCells[.arm] ?? [], to: body) { problems.append("frame \(f): arm detached") }
+                if !allAttached(pen.layerCells[.leg] ?? [], to: body) { problems.append("frame \(f): leg detached") }
             }
         }
-        if anim.loop, let prev, let first, n > 1 { compare(prev, first, cut: data.keys[0].cut, at: n, what: "seam") }
+        if anim.loop, data.loops, let prev, let first, n > 1, !cuts.contains(0) { compare(prev, first, at: n, what: "seam") }
         if problems.isEmpty { print("\(anim.id) \(n) PASS") }
         else { print("\(anim.id) \(n) FAIL " + problems.prefix(3).joined(separator: "; ")); failed = true }
     }

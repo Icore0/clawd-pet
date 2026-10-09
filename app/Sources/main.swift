@@ -66,6 +66,12 @@ if CommandLine.arguments.contains("--discover") {
     }
     exit(0)
 }
+if let i = CommandLine.arguments.firstIndex(of: "--ascii"), i + 2 < CommandLine.arguments.count {
+    exit(runAscii(CommandLine.arguments[i + 1], Int(CommandLine.arguments[i + 2]) ?? 0))
+}
+if let i = CommandLine.arguments.firstIndex(of: "--sheet"), i + 1 < CommandLine.arguments.count {
+    exit(runSheet(CommandLine.arguments[i + 1]))
+}
 if CommandLine.arguments.contains("--selftest") {
     let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
     if !home.contains("/tmp/") && !home.contains("session-pet-test") { exit(2) }
@@ -76,6 +82,9 @@ if CommandLine.arguments.contains("--selftest") {
     if let problem = AnimationCatalog.runChecks() {
         print(problem)
         exit(1)
+    }
+    for (raw, want) in [("*wiggles happily* Hi there!", "Hi there!"), ("(hums) [waves] Sure.", "Sure."), ("Use (parentheses) freely.", "Use (parentheses) freely."), ("*nods*", "*nods*")] where ChatModel.clean(raw) != want {
+        print("chat clean: \(raw)"); exit(1)
     }
     if let problem = Updater.selfCheck() {
         print(problem)
@@ -288,6 +297,8 @@ final class DragView: NSView {
         startMouse = NSEvent.mouseLocation; startOrigin = window?.frame.origin ?? .zero; moved = false
         samples = [(startMouse, ProcessInfo.processInfo.systemUptime)]
         delegate?.glider.stop()
+        // A press may become a drag: no card until the pointer has been still after release.
+        delegate?.blockCard(until: .distantFuture)
     }
     override func mouseDragged(with e: NSEvent) {
         let cur = NSEvent.mouseLocation
@@ -308,6 +319,9 @@ final class DragView: NSView {
         delegate?.positionChat()
     }
     override func mouseUp(with e: NSEvent) {
+        // After a drag the card waits until the pointer comes back; a plain click shows it again as usual.
+        delegate?.blockCard(until: Date().addingTimeInterval(moved ? 0.8 : 0.3))
+        if !moved && model.hover { delegate?.hoverChanged(true) }
         if moved {
             model.glideSid = model.grabbedSid
             model.grabbedSid = nil
@@ -603,9 +617,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     func showActivity() {
-        guard !model.chatOpen, !model.isDragging, !model.isGliding, model.hover else { return }
+        guard !model.chatOpen, !model.isDragging, !model.isGliding, model.hover, Date() > cardBlockedUntil else { return }
         if let s = model.sessions.first(where: { $0.sid == model.cardSid }), model.showLatest { watcher.watch(s.transcript) } else { watcher.stop() }
-        positionActivity(); activityPanel.orderFrontRegardless()
+        // Place it first, then show it, so it never flashes where it was last time.
+        positionActivity(force: true); activityPanel.orderFrontRegardless()
+    }
+    var cardBlockedUntil = Date.distantPast
+    func blockCard(until t: Date) {
+        cardBlockedUntil = t
+        hoverWork?.cancel()
+        if t > Date() { hideCard() }
     }
     func hideCard() {
         activityPanel.orderOut(nil)
@@ -639,8 +660,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if self?.model.toast == text { self?.toastPanel.orderOut(nil) }
         }
     }
-    func positionActivity() {
-        guard activityPanel != nil, activityPanel.isVisible else { return }
+    func positionActivity(force: Bool = false) {
+        guard activityPanel != nil, force || activityPanel.isVisible else { return }
         activityHost.layoutSubtreeIfNeeded()
         let size = activityHost.fittingSize
         activityPanel.setContentSize(size)

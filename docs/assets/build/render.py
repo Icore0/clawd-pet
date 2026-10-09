@@ -66,12 +66,14 @@ def backdrop(w, h, t, grid=24):
 
 
 def stamp(im, cells, ox, oy, cell, t):
-    """Draws one frame's cells. Cell (0,0) of the sprite lands at (ox, oy). Ground row is y=8."""
+    """Draws one frame's sprite pixels. `cell` is the old 12 x 8 cell size: the sprite is 24 x 16 pixels of cell / 2.
+    Pixel (0,0) lands at (ox, oy); the ground row is y=16."""
     px = im.load()
     W, H = im.size
+    cell = max(1, cell // 2)
     # grounded shadow under the feet
     d = ImageDraw.Draw(im)
-    d.rectangle((ox + 2 * cell, oy + 8 * cell, ox + 10 * cell - 1, oy + 8 * cell + cell // 2), fill=t["shadow"])
+    d.rectangle((ox + 2 * cell, oy + 16 * cell, ox + 22 * cell - 1, oy + 16 * cell + cell // 2), fill=t["shadow"])
     for x, y, c in cells:
         a = (c & 255) / 255
         if a <= 0:
@@ -179,7 +181,7 @@ TEAM = [("web", "needs you", True), ("api", "editing", False), ("docs", "reading
 
 
 def team(items):
-    W, H, cell, slot = 1280, 280, 9, 186
+    W, H, cell, slot = 1280, 280, 10, 186
     floor = 196
     for theme, t in THEMES.items():
         frames = []

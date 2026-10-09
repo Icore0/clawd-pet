@@ -44,50 +44,44 @@ enum AnimationCatalog {
 
     static let activityIds: Set<String> = [
         "read", "edit", "bash", "search", "web", "agent", "plan", "compact",
-        "test", "build", "git", "install", "ask", "yourTurn", "done", "oops", "hello", "bye"
+        "test", "build", "git", "install", "ask", "done", "oops", "hello", "bye"
     ]
     static let ambientIds: Set<String> = [
-        "breathe", "blink", "glance", "stretch", "yawn", "dance", "hum", "mote", "juggle", "dream"
+        "breathe", "glance", "stretch", "yawn", "dance", "hum", "juggle", "dream"
     ]
 
     static let ambientWeights: [(String, Int)] = [
-        ("breathe", 5), ("blink", 4), ("glance", 3), ("stretch", 2), ("yawn", 2),
-        ("dance", 1), ("hum", 2), ("mote", 2), ("juggle", 1), ("dream", 1)
+        ("breathe", 6), ("glance", 3), ("stretch", 2), ("yawn", 2),
+        ("dance", 1), ("hum", 2), ("juggle", 1), ("dream", 1)
     ]
 
     static let all: [Animation] = [
         clip("read", "read", "mood working, kind read", activityPriority, action: 2.4, loop: true, pose: "eyes", props: "book"),
         clip("edit", "edit", "mood working, kind edit", activityPriority, action: 1.6, loop: true, pose: "arms", props: "laptop"),
-        clip("bash", "bash", "mood working, kind bash", activityPriority, action: 1.8, loop: true, pose: "arms", props: "laptop"),
         clip("search", "search", "mood working, kind search", activityPriority, action: 1.4, loop: true, pose: "lean", props: "glass"),
         clip("web", "web", "mood working, kind web", activityPriority, action: 2.0, loop: true, pose: "eyes", props: "page"),
         clip("agent", "agent", "mood working, kind agent", activityPriority, action: 1.6, loop: true, pose: "arms"),
         clip("plan", "plan", "mood working, kind plan", activityPriority, action: 2.2, loop: true, pose: "arms"),
-        clip("compact", "compact", "mood working, kind compact", activityPriority, action: 1.0, loop: true, pose: "squash"),
         clip("test", "test", "mood working, kind test", activityPriority, action: 2.0, loop: true, pose: "eyes"),
         clip("build", "build", "mood working, kind build", activityPriority, action: 2.6, loop: true, pose: "arms", wind: 0.40, settle: 0.50),
         clip("git", "git", "mood working, kind git", activityPriority, action: 1.2, loop: true, pose: "lean"),
         clip("install", "install", "mood working, kind install", activityPriority, action: 2.2, loop: true, pose: "arms"),
         clip("ask", "waiting", "mood waiting, kind is not yourTurn", waitingPriority, action: 1.4, loop: true, pose: "arms"),
-        clip("yourTurn", "waiting", "mood waiting, kind yourTurn", waitingPriority, action: 1.0, loop: true, pose: "lean"),
         clip("done", "done", "mood done", eventPriority, action: 0.8, loop: false, pose: "arms"),
         clip("oops", "oops", "mood oops", errorPriority, action: 1.0, loop: true, pose: "squash"),
         clip("hello", "hello", "mood hello", eventPriority, action: 0.8, loop: false, pose: "arms"),
         clip("bye", "bye", "mood bye", eventPriority, action: 0.8, loop: false, pose: "arms"),
         clip("think", "working", "mood working, kind has no activity entry", activityPriority, action: 1.5, loop: true, pose: "eyes"),
         clip("breathe", "ambient", "weighted idle pool", ambientPriority, action: 3.2, loop: true, pose: "squash"),
-        clip("blink", "ambient", "weighted idle pool", ambientPriority, action: 0.4, loop: true, pose: "eyes", wind: 0.05, settle: 0.08),
         clip("glance", "ambient", "weighted idle pool", ambientPriority, action: 1.2, loop: true, pose: "eyes"),
         clip("stretch", "ambient", "weighted idle pool, or a 2h session for 3s every 10min", ambientPriority, action: 1.6, loop: true, pose: "arms"),
         clip("yawn", "ambient", "weighted idle pool", ambientPriority, action: 1.8, loop: true, pose: "eyes"),
         clip("dance", "ambient", "weighted idle pool", ambientPriority, action: 1.4, loop: true, pose: "arms"),
         clip("hum", "ambient", "weighted idle pool", ambientPriority, action: 2.0, loop: true, pose: "squash"),
-        clip("mote", "ambient", "weighted idle pool", ambientPriority, action: 2.2, loop: true, pose: "eyes"),
         clip("juggle", "ambient", "weighted idle pool", ambientPriority, action: 1.6, loop: true, pose: "arms"),
         clip("dream", "ambient", "weighted idle pool", ambientPriority, action: 3.0, loop: true, pose: "eyes"),
         clip("sleep", "sleep", "sleeping flag, or idle 120s", idlePriority, action: 4.0, loop: true, pose: "eyes"),
         clip("drag", "drag", "isDragging", eventPriority, action: 0.8, loop: true, pose: "arms"),
-        clip("glide", "glide", "isGliding", eventPriority, action: 1.1, loop: true, pose: "lean"),
         clip("pet", "pet", "petUntil still ahead", eventPriority, action: 0.9, loop: true, pose: "eyes"),
         clip("listen", "listen", "listening", eventPriority, action: 1.3, loop: true, pose: "eyes"),
         clip("chatThink", "chatThink", "chatBusy", eventPriority, action: 1.7, loop: true, pose: "eyes"),
@@ -97,58 +91,69 @@ enum AnimationCatalog {
         clip("handoff", "handoff", "a sub-agent started, first 2.5s", eventPriority, action: 1.4, loop: false, pose: "arms", props: "parcel"),
         clip("grind", "grind", "working turn longer than 20 min, 3s every 5 min", eventPriority, action: 3.0, loop: false, pose: "arms"),
         clip("deploy", "deploy", "command vercel, netlify, fly deploy, npm publish, or docker push", activityPriority, action: 1.8, loop: true, pose: "arms", props: "mark", wind: 0.45, settle: 0.55),
-        clip("commit", "commit", "command git commit", activityPriority, action: 1.0, loop: true, pose: "arms", props: "seal"),
         clip("push", "push", "command git push", activityPriority, action: 1.3, loop: true, pose: "lean", props: "plane"),
         clip("pull", "pull", "command git pull or git fetch", activityPriority, action: 1.5, loop: true, pose: "arms", props: "parcel"),
-        clip("lint", "lint", "command eslint, prettier, or ruff", activityPriority, action: 0.9, loop: true, pose: "arms", props: "brush"),
-        clip("migrate", "migrate", "command prisma, alembic, or psql", activityPriority, action: 2.1, loop: true, pose: "arms", props: "boxes"),
-        clip("docker", "docker", "command docker or compose", activityPriority, action: 1.7, loop: true, pose: "squash", props: "box"),
-        clip("serve", "serve", "command npm run dev or uvicorn", activityPriority, action: 1.9, loop: true, pose: "eyes", props: "lantern"),
-        clip("mcp", "mcp", "tool name starts with mcp__", activityPriority, action: 0.8, loop: true, pose: "lean", props: "line"),
-        clip("burstRead", "burstRead", "3 Reads inside 5s", activityPriority, action: 0.6, loop: true, pose: "eyes", props: "pages"),
-        clip("notebook", "notebook", "NotebookEdit", activityPriority, action: 1.4, loop: true, pose: "arms", props: "page"),
         clip("webSearch", "webSearch", "WebSearch", activityPriority, action: 1.8, loop: true, pose: "eyes", props: "glass"),
-        clip("webFetch", "webFetch", "WebFetch", activityPriority, action: 2.2, loop: true, pose: "eyes", props: "page"),
-        clip("bandage", "bandage", "errorStreak 3 or more", errorPriority, action: 1.6, loop: true, pose: "squash", props: "mark"),
         clip("sweat", "sweat", "tool running longer than 60s", eventPriority, action: 1.1, loop: true, pose: "lean", props: "drop"),
         clip("tea", "tea", "tool running longer than 180s", eventPriority, action: 2.5, loop: true, pose: "arms", props: "cup"),
-        clip("book", "book", "tool running longer than 600s", eventPriority, action: 2.8, loop: true, pose: "eyes", props: "rectangle"),
         clip("frantic", "frantic", "15 tool starts inside 10s", eventPriority, action: 0.5, loop: true, pose: "arms", props: "lines", wind: 0.05, settle: 0.08),
         clip("watch", "watch", "waiting longer than 120s", waitingPriority, action: 1.6, loop: true, pose: "eyes", props: "circle"),
         clip("flag", "flag", "waiting longer than 600s", waitingPriority, action: 1.4, loop: true, pose: "lean", props: "flag"),
-        clip("coffee", "coffee", "earliest session today, first 30s", idlePriority, action: 2.0, loop: true, pose: "arms", props: "cup"),
         clip("confetti", "confetti", "tool 100 or first commit today, 2s", eventPriority, action: 1.4, loop: false, pose: "arms", props: "dots"),
         clip("nightcap", "nightcap", "idle, local hour 1 through 4", idlePriority, action: 2.6, loop: true, pose: "eyes", props: "moon"),
         clip("conflict", "conflict", "failure text has CONFLICT or Automatic merge failed", errorPriority, action: 1.0, loop: false, pose: "squash", props: "mark"),
-        clip("conflictStare", "team", "two edits of the same file within 60s", eventPriority, action: 1.2, loop: true, pose: "eyes", wind: 0.25, settle: 0.35),
         clip("highFive", "team", "two done moods within 3s", eventPriority, action: 0.8, loop: false, pose: "arms", wind: 0.15, settle: 0.25),
         clip("wave", "team", "a session sid newly appeared", eventPriority, action: 0.9, loop: false, pose: "arms", wind: 0.12, settle: 0.22),
         clip("parcel", "team", "done while another session works, then sleep", eventPriority, action: 1.1, loop: false, pose: "arms", props: "parcel", wind: 0.35, settle: 0.40),
         clip("nap", "team", "every session idle for 120s", idlePriority, action: 2.0, loop: true, pose: "eyes", wind: 0.50, settle: 0.60),
-        clip("bump", "team", "grabbed slot overlaps a sibling", eventPriority, action: 0.4, loop: false, pose: "squash", wind: 0.08, settle: 0.12),
         clip("hop", "team", "every session mood is done", eventPriority, action: 0.7, loop: true, pose: "arms", wind: 0.10, settle: 0.18),
-        clip("poke", "poke", "single click without a drag", eventPriority, action: 0.6, loop: false, pose: "squash", wind: 0.06, settle: 0.10),
-        clip("spin", "spin", "second click within 0.35s", eventPriority, action: 0.8, loop: false, pose: "lean", wind: 0.07, settle: 0.14),
         clip("dizzy", "dizzy", "hold and shake", eventPriority, action: 1.0, loop: false, pose: "eyes", wind: 0.09, settle: 0.16),
-        clip("lean", "lean", "hover one slot for 2s", eventPriority, action: 1.2, loop: true, pose: "lean", wind: 0.18, settle: 0.28),
-        clip("peek", "peek", "panel origin within 8pt of a screen edge while dragging", eventPriority, action: 0.8, loop: true, pose: "lean", wind: 0.22, settle: 0.32),
-        clip("opening", "chat", "chat status opening", eventPriority, action: 0.8, loop: true, pose: "eyes"),
-        clip("listening", "chat", "chat status listening", eventPriority, action: 1.3, loop: true, pose: "eyes"),
-        clip("reading", "chat", "chat status reading", eventPriority, action: 1.2, loop: true, pose: "eyes"),
-        clip("thinking", "chat", "chat status thinking", eventPriority, action: 1.7, loop: true, pose: "eyes"),
-        clip("talking", "chat", "chat status talking", eventPriority, action: 1.5, loop: true, pose: "arms"),
         clip("offline", "chat", "chat status offline", eventPriority, action: 1.0, loop: true, pose: "eyes"),
         clip("outOfCredits", "chat", "chat status outOfCredits", eventPriority, action: 1.0, loop: true, pose: "eyes"),
         clip("rateLimited", "chat", "chat status rateLimited", eventPriority, action: 1.0, loop: true, pose: "eyes"),
-        clip("unauthorized", "chat", "chat status unauthorized", eventPriority, action: 1.0, loop: true, pose: "eyes"),
         clip("timeout", "chat", "chat status timeout", eventPriority, action: 1.0, loop: true, pose: "eyes")
     ]
+
+    /// Clips folded into a clearer one. Every old trigger still lands on a real clip.
+    static let aliases: [String: String] = [
+        "bash": "edit",
+        "compact": "think",
+        "yourTurn": "ask",
+        "blink": "breathe",
+        "mote": "glance",
+        "glide": "drag",
+        "commit": "git",
+        "lint": "edit",
+        "migrate": "build",
+        "docker": "install",
+        "serve": "build",
+        "mcp": "web",
+        "burstRead": "read",
+        "notebook": "edit",
+        "webFetch": "web",
+        "bandage": "oops",
+        "book": "tea",
+        "coffee": "tea",
+        "conflictStare": "conflict",
+        "bump": "hop",
+        "poke": "hop",
+        "spin": "dizzy",
+        "lean": "glance",
+        "peek": "drag",
+        "opening": "listen",
+        "listening": "listen",
+        "reading": "chatThink",
+        "thinking": "chatThink",
+        "talking": "chatTalk",
+        "unauthorized": "offline"
+    ]
+    static func resolve(_ id: String) -> String { aliases[id] ?? id }
 
     /// Id lookup, built once (the renderer asks several times per frame per character).
     static let index: [String: Animation] = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
     static func byId(_ id: String) -> Animation {
-        index[id] ?? all[0]
+        index[resolve(id)] ?? all[0]
     }
 
     /// Walks tracks. A looping action stays in that track after anticipation; a one-shot continues into settle.
@@ -249,7 +254,7 @@ enum AnimationCatalog {
            now.timeIntervalSince1970.truncatingRemainder(dividingBy: 300) < 3 {
             return byId("grind")
         }
-        if !activityId.isEmpty, !["testPass", "testFail", "handoff"].contains(activityId), index[activityId] != nil {
+        if !activityId.isEmpty, !["testPass", "testFail", "handoff"].contains(activityId), index[resolve(activityId)] != nil {
             return byId(activityId)
         }
         if mood == "waiting" { return byId(kind == .yourTurn ? "yourTurn" : "ask") }
@@ -304,7 +309,7 @@ enum AnimationCatalog {
             if abs(sum - anim.duration) > 0.001 { return "\(anim.id) duration" }
         }
         let fixed = Date(timeIntervalSince1970: 1_700_000_000)
-        if pick(mood: "idle", kind: .none, now: fixed, errorStreak: 3).id != "bandage" { return "error streak bandage" }
+        if pick(mood: "idle", kind: .none, now: fixed, errorStreak: 3).id != "oops" { return "error streak oops" }
         if pick(mood: "working", kind: .bash, now: fixed, toolStartedAt: fixed.addingTimeInterval(-61)).id != "sweat" { return "tool 61s sweat" }
         if pick(mood: "working", kind: .bash, now: fixed, toolStartedAt: fixed.addingTimeInterval(-181)).id != "tea" { return "tool 181s tea" }
         if let problem = independenceCheck() { return problem }
@@ -419,12 +424,12 @@ enum AnimationCatalog {
         if teamChoice(sid: "a", sessions: solo, now: now, bumping: true, waving: true) != nil { return "teamChoice with one session" }
 
         let stare = [row("a", "working", .edit, "src/App.swift", ms), row("b", "working", .edit, "lib/App.swift", ms + 1_000)]
-        if pick(mood: "working", kind: .edit, now: now, sessions: stare, sid: "a").id != "conflictStare" { return "conflict stare a" }
-        if pick(mood: "working", kind: .edit, now: now, sessions: stare, sid: "b").id != "conflictStare" { return "conflict stare b" }
+        if pick(mood: "working", kind: .edit, now: now, sessions: stare, sid: "a").id != "conflict" { return "conflict stare a" }
+        if pick(mood: "working", kind: .edit, now: now, sessions: stare, sid: "b").id != "conflict" { return "conflict stare b" }
         if pick(mood: "working", kind: .edit, dragging: true, now: now, sessions: stare, sid: "a").id != "drag" { return "drag loses to stare" }
         if conflictLook(stare)?.file != "App.swift" { return "conflict file" }
         let late = [row("a", "working", .edit, "src/App.swift", ms), row("b", "working", .edit, "lib/App.swift", ms + 61_000)]
-        if pick(mood: "working", kind: .edit, now: now, sessions: late, sid: "a").id == "conflictStare" { return "conflict too late" }
+        if pick(mood: "working", kind: .edit, now: now, sessions: late, sid: "a").id == "conflict" { return "conflict too late" }
 
         let fived = [row("a", "done", .none, "", ms), row("b", "done", .none, "", ms + 1_000), row("c", "working", .read, "", ms)]
         if pick(mood: "done", kind: .none, now: now, sessions: fived, sid: "a").id != "highFive" { return "high five a" }
@@ -444,14 +449,13 @@ enum AnimationCatalog {
 
         let waking = [row("a", "working", .read, "", ms), row("b", "working", .bash, "", ms)]
         if pick(mood: "working", kind: .read, now: now, sessions: waking, sid: "a", waving: true).id != "wave" { return "wave" }
-        if pick(mood: "working", kind: .read, now: now, sessions: waking, sid: "a", bumping: true).id != "bump" { return "bump a" }
-        if pick(mood: "working", kind: .bash, now: now, sessions: waking, sid: "b", bumping: true).id != "bump" { return "bump b" }
+        if pick(mood: "working", kind: .read, now: now, sessions: waking, sid: "a", bumping: true).id != "hop" { return "bump a" }
+        if pick(mood: "working", kind: .bash, now: now, sessions: waking, sid: "b", bumping: true).id != "hop" { return "bump b" }
         let boxes = ["a": SlotBox(x: 0, y: 0, w: 10, h: 10), "b": SlotBox(x: 5, y: 0, w: 10, h: 10)]
         let hit = bumpSids(grabbed: "a", frames: boxes)
         if hit != ["a", "b"] { return "bump overlap" }
         if !bumpSids(grabbed: "a", frames: ["a": SlotBox(x: 0, y: 0, w: 10, h: 10)]).isEmpty { return "bump one" }
 
-        if byId("blink").windUp != 0.05 || byId("blink").settle != 0.08 { return "blink timing" }
         if byId("frantic").windUp != 0.05 || byId("frantic").settle != 0.08 { return "frantic timing" }
         if byId("build").windUp != 0.40 || byId("build").settle != 0.50 { return "build timing" }
         if byId("deploy").windUp != 0.45 || byId("deploy").settle != 0.55 { return "deploy timing" }
@@ -461,7 +465,7 @@ enum AnimationCatalog {
             let settle = anim.tracks.first { $0.phase == "settle" }?.duration
             if wind != anim.windUp || settle != anim.settle { return "\(anim.id) track timing" }
         }
-        let doneClips = ["deploy", "commit", "push", "pull", "lint", "migrate", "docker", "serve", "mcp", "burstRead", "notebook", "webSearch", "webFetch"]
+        let doneClips = ["deploy", "push", "pull", "webSearch"]
         for id in doneClips where byId(id).status != "done" { return "\(id) status" }
         if all.contains(where: { $0.id == "alarm" }) { return "alarm has no verified trigger" }
         let ev = Date(timeIntervalSince1970: 1_700_000_000)

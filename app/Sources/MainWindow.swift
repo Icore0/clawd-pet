@@ -68,9 +68,10 @@ struct MascotView: View {
         Canvas { ctx, size in
             let r = Renderer(m: model)
             let pose = r.pose(name, quirk: 0, local: -1, t: t, age: t, now: Date(timeIntervalSinceReferenceDate: t))
-            let ox = (Double(size.width) - 12 * cell) / 2 + Double(pose.dx) * cell
-            let oy = Double(size.height) - 9 * cell - Double(pose.lift) * cell
-            let pen = Pen(ctx, u: cell, ox: ox, oy: oy)
+            let px = cell / 2
+            let ox = (Double(size.width) - 24 * px) / 2 + Double(pose.dx) * px
+            let oy = Double(size.height) - 18 * px - Double(pose.lift) * px
+            let pen = Pen(ctx, u: px, ox: ox, oy: oy)
             r.paintSprite(pen, pose, name, t, t)
             r.paintEffects(pen, name, pose, frame: r.clipFrame(name, age: t), t: t, session: nil, now: Date(timeIntervalSinceReferenceDate: t))
         }
@@ -109,6 +110,7 @@ struct MainView: View {
         HStack(spacing: 0) {
             Sidebar(model: model, state: state)
             Rectangle().fill(W.soft).frame(width: 1)
+            GeometryReader { geo in
             ScrollView {
                 Group {
                     switch state.pane {
@@ -119,9 +121,11 @@ struct MainView: View {
                     case .about: AboutPane(model: model)
                     }
                 }
-                .padding(.horizontal, 44).padding(.top, 56).padding(.bottom, 40)
-                .frame(maxWidth: 860, alignment: .leading)
+                // Content grows with the window (full screen included), with margins that grow too.
+                .padding(.horizontal, max(44, geo.size.width * 0.06)).padding(.top, 56).padding(.bottom, 40)
+                .frame(maxWidth: 1500, alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
             }
         }
         .background(W.bg)
@@ -350,7 +354,7 @@ struct AnimationsPane: View {
                 }
             }
             .padding(.bottom, 28)
-            let cols = Array(repeating: GridItem(.flexible(), spacing: 0), count: 5)
+            let cols = [GridItem(.adaptive(minimum: 140), spacing: 0)]
             LazyVGrid(columns: cols, spacing: 0) {
                 ForEach(clips, id: \.id) { c in
                     let on = state.preview == c.id

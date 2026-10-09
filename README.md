@@ -55,7 +55,7 @@ Every clip is listed in **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)**, which is g
 |---|---|
 | **A team of Wigglets** | One per session you're working in, including ones already open before you connected. Six side by side, then a `+N` badge, or switch to **One Wigglet** for all of them. Sessions you haven't touched for a while (30 min to a day, your pick) step aside. |
 | **Live activity** | Each Wigglet shows what its session is doing: reading, editing, tests, builds, git, installs, web, sub-agents, plans or compaction. |
-| **80+ pixel animations** | Hand-timed 12 fps frames: a deploy rocket, a tea break on long commands, a check mark when tests pass, high-fives and pass-the-parcel between sessions. |
+| **56 readable animations** | Hand-timed 12 fps pixel art with real props and faces: a deploy rocket, a tea break on long commands, a check mark when tests pass, high-fives and pass-the-parcel between sessions. |
 | **Live hover card** | Hover over a Wigglet: project, turn timer, last actions and the session's latest message as it arrives. **Jump** takes you to that session's window. |
 | **Chat with Claude** | Click a Wigglet or press <kbd>⌃⌥Space</kbd>. Uses your Claude Code login by default, or your own Anthropic, OpenAI, OpenRouter or Gemini key, or a local Ollama model. Keys live in the macOS Keychain. |
 | **Private by default** | No accounts and no analytics. The network is used only for chat and signed updates. |
